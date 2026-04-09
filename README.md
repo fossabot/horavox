@@ -9,12 +9,15 @@ A multi-language speaking clock that announces the time using [Piper](https://gi
 - **Voice management** -- browse, download, and auto-detect Piper voices from Hugging Face
 - **Bluetooth audio fix** -- plays a silent MP3 before speech to prevent clipping on Bluetooth speakers
 - **Flexible scheduling** -- restrict announcements to a time range (e.g., 7:00--22:00)
+- **Background mode** -- run as a daemon with `--background`, stop with `--stop`
 - **Simulated time** -- debug with `--time HH:MM` to set a fake starting time
+- **Silent by default** -- no terminal output unless `--verbose` is passed
 
 ## Requirements
 
 - Python 3
 - [piper-tts](https://github.com/rhasspy/piper) (`pip install piper-tts`)
+- [daemonize](https://pypi.org/project/daemonize/) (`pip install daemonize`) -- for `--background` mode
 - `aplay` (ALSA, for WAV playback)
 - `mpg123` (for blank MP3 playback)
 
@@ -23,7 +26,7 @@ A multi-language speaking clock that announces the time using [Piper](https://gi
 ```bash
 git clone https://github.com/jcubic/clock.git
 cd clock
-pip install piper-tts
+pip install piper-tts daemonize
 ```
 
 ## Usage
@@ -69,11 +72,30 @@ Supports midnight wrap (e.g., `--start 22 --end 6`).
 ./clock.py --time 16:00 --exit
 ```
 
+### Run in the background
+
+```bash
+./clock.py --lang pl --voice pl_PL-darkman-medium --start 8 --end 0 --background
+```
+
+Stop the background daemon:
+
+```bash
+./clock.py --stop
+```
+
+### Enable log output
+
+```bash
+./clock.py --verbose
+```
+
 ### All options
 
 ```
 usage: clock.py [-h] [--lang LANG] [--voice NAME] [--list-voices]
                 [--start HOUR] [--end HOUR] [--time HH:MM] [--exit] [--now]
+                [--background] [--stop] [--verbose]
 
 Speaking clock — announces the time using text-to-speech
 
@@ -86,6 +108,9 @@ options:
   --time HH:MM   Set simulated start time for debugging (e.g., 16:00)
   --exit         Run once and exit (for debugging)
   --now          Speak the current time (with minutes) and exit
+  --background   Run as a background daemon
+  --stop         Stop the background daemon and exit
+  --verbose      Show log messages (silent by default)
 ```
 
 ## Adding a new language
@@ -153,6 +178,7 @@ data/
   blank.mp3           Silent MP3 for Bluetooth audio wake-up
 .cache/
   voices.json         Cached voice catalog from Hugging Face (24h TTL)
+  clock.pid           PID file for background daemon
 ```
 
 ## License

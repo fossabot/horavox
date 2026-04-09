@@ -6,12 +6,14 @@ import glob
 import json
 import locale
 import os
+import signal
 import subprocess
 import sys
 import time
 import urllib.request
 import wave
 
+from daemonize import Daemonize
 from piper import PiperVoice
 
 # ================== PATHS ==================
@@ -24,6 +26,7 @@ BLANK_MP3 = os.path.join(DATA_DIR, "blank.mp3")
 VOICES_JSON_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json"
 VOICES_BASE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main"
 TEMP_WAV = "/tmp/speaking_clock.wav"
+PID_FILE = os.path.join(CACHE_DIR, "clock.pid")
 # ============================================
 
 VERBOSE = False
@@ -95,6 +98,16 @@ def parse_args():
     )
 
     # Background / daemon
+    parser.add_argument(
+        "--background",
+        action="store_true",
+        help="Run as a background daemon",
+    )
+    parser.add_argument(
+        "--stop",
+        action="store_true",
+        help="Stop the background daemon and exit",
+    )
     parser.add_argument(
         "--verbose",
         action="store_true",
@@ -363,6 +376,61 @@ def speak(voice, text):
         os.remove(TEMP_WAV)
 
 
+# ==================== DAEMON ====================
+
+
+def stop_daemon():
+    """Stop a running background daemon via PID file."""
+    if not os.path.exists(PID_FILE):
+        log("No PID file found. Is the clock running in the background?")
+        return False
+    try:
+        with open(PID_FILE, "r") as f:
+            pid = int(f.read().strip())
+    except (ValueError, OSError):
+        log("Invalid PID file. Cleaning up.")
+        os.remove(PID_FILE)
+        return False
+
+    # Check if process is alive
+    try:
+        os.kill(pid, 0)
+    except OSError:
+        log(f"Stale PID file (process {pid} not running). Cleaning up.")
+        os.remove(PID_FILE)
+        return False
+
+    try:
+        os.kill(pid, signal.SIGTERM)
+        # Wait up to 5 seconds for process to exit
+        for _ in range(50):
+            try:
+                os.kill(pid, 0)
+            except OSError:
+                break
+            time.sleep(0.1)
+        else:
+            os.kill(pid, signal.SIGKILL)
+        log(f"Stopped background clock (PID {pid}).")
+        return True
+    except OSError as e:
+        log(f"Error stopping process {pid}: {e}")
+        return False
+
+
+def is_daemon_running():
+    """Check if a daemon is already running. Returns PID or None."""
+    if not os.path.exists(PID_FILE):
+        return None
+    try:
+        with open(PID_FILE, "r") as f:
+            pid = int(f.read().strip())
+        os.kill(pid, 0)
+        return pid
+    except (ValueError, OSError):
+        return None
+
+
 # ==================== MAIN ====================
 
 
@@ -374,69 +442,13 @@ def is_in_range(hour, start, end):
         return hour >= start or hour <= end
 
 
-def main():
-    global VERBOSE
-    args = parse_args()
-    VERBOSE = args.verbose
-
-    # Resolve language
-    lang = args.lang or detect_language()
-
-    # --list-voices mode
-    if args.list_voices:
-        voices = list_voices_for_language(lang)
-        if not voices:
-            print(f"No voices found for language '{lang}'.")
-            return
-
-        lang_name = ""
-        catalog = get_voices_catalog()
-        for v in voices:
-            info = catalog.get(v["key"], {})
-            lang_name = info.get("language", {}).get("name_english", lang)
-            break
-
-        print(f"Available voices for {lang_name} ({lang}):\n")
-        print(f"  {'Voice':<40} {'Quality':<10} {'Size':<10} {'Installed'}")
-        print(f"  {'-' * 40} {'-' * 10} {'-' * 10} {'-' * 10}")
-        for v in voices:
-            mark = "*" if v["installed"] else ""
-            print(
-                f"  {v['key']:<40} {v['quality']:<10} {v['size_mb']:.0f} MB     {mark}"
-            )
-        print(f"\nInstall a voice: clock.py --voice <name>")
-        return
-
-    # Load language data
-    lang_data, lang = load_language_data(lang)
-
-    # Validate hour range
-    if not (0 <= args.start <= 23):
-        print(f"Error: --start must be 0-23, got {args.start}")
-        return
-    if not (0 <= args.end <= 23):
-        print(f"Error: --end must be 0-23, got {args.end}")
-        return
-
-    # Compute time offset for --time option
-    if args.time:
-        try:
-            h, m = map(int, args.time.split(":"))
-            if not (0 <= h <= 23 and 0 <= m <= 59):
-                raise ValueError
-        except ValueError:
-            print(f"Error: --time must be HH:MM (e.g., 16:00), got '{args.time}'")
-            return
-        real_now = datetime.datetime.now()
-        fake_now = real_now.replace(hour=h, minute=m, second=0, microsecond=0)
-        time_offset = fake_now - real_now
-    else:
-        time_offset = datetime.timedelta(0)
+def run_clock(args, lang, lang_data, time_offset):
+    """Main clock loop. Runs in foreground or as daemon action."""
 
     def get_now():
         return datetime.datetime.now() + time_offset
 
-    # Resolve and load voice
+    # Load voice (intentionally here — after daemon fork to avoid threading issues)
     voice_path = resolve_voice(args, lang)
     voice_name = os.path.basename(voice_path).replace(".onnx", "")
     log(f"Loading voice: {voice_name}")
@@ -483,6 +495,98 @@ def main():
 
         seconds_to_next_hour = ((60 - now.minute - 1) * 60) + (60 - now.second)
         time.sleep(seconds_to_next_hour + 1)
+
+
+def main():
+    global VERBOSE
+    args = parse_args()
+    VERBOSE = args.verbose
+
+    # --stop mode: kill background daemon and exit
+    if args.stop:
+        stop_daemon()
+        return
+
+    # Resolve language
+    lang = args.lang or detect_language()
+
+    # --list-voices mode
+    if args.list_voices:
+        voices = list_voices_for_language(lang)
+        if not voices:
+            log(f"No voices found for language '{lang}'.")
+            return
+
+        lang_name = ""
+        catalog = get_voices_catalog()
+        for v in voices:
+            info = catalog.get(v["key"], {})
+            lang_name = info.get("language", {}).get("name_english", lang)
+            break
+
+        print(f"Available voices for {lang_name} ({lang}):\n")
+        print(f"  {'Voice':<40} {'Quality':<10} {'Size':<10} {'Installed'}")
+        print(f"  {'-' * 40} {'-' * 10} {'-' * 10} {'-' * 10}")
+        for v in voices:
+            mark = "*" if v["installed"] else ""
+            print(
+                f"  {v['key']:<40} {v['quality']:<10} {v['size_mb']:.0f} MB     {mark}"
+            )
+        print(f"\nInstall a voice: clock.py --voice <name>")
+        return
+
+    # Load language data
+    lang_data, lang = load_language_data(lang)
+
+    # Validate hour range
+    if not (0 <= args.start <= 23):
+        print(f"Error: --start must be 0-23, got {args.start}")
+        return
+    if not (0 <= args.end <= 23):
+        print(f"Error: --end must be 0-23, got {args.end}")
+        return
+
+    # Compute time offset for --time option
+    if args.time:
+        try:
+            h, m = map(int, args.time.split(":"))
+            if not (0 <= h <= 23 and 0 <= m <= 59):
+                raise ValueError
+        except ValueError:
+            print(f"Error: --time must be HH:MM (e.g., 16:00), got '{args.time}'")
+            return
+        real_now = datetime.datetime.now()
+        fake_now = real_now.replace(hour=h, minute=m, second=0, microsecond=0)
+        time_offset = fake_now - real_now
+    else:
+        time_offset = datetime.timedelta(0)
+
+    # --background mode: daemonize using the daemonize library
+    if args.background:
+        existing_pid = is_daemon_running()
+        if existing_pid:
+            log(f"Clock is already running in the background (PID {existing_pid}).")
+            log("Use --stop to stop it first.")
+            return
+
+        # Validate voice exists before forking (so errors are visible)
+        voice_path = resolve_voice(args, lang)
+        if not os.path.exists(voice_path):
+            return
+
+        ensure_cache_dir()
+        daemon = Daemonize(
+            app="speaking-clock",
+            pid=PID_FILE,
+            action=lambda: run_clock(args, lang, lang_data, time_offset),
+            chdir=SCRIPT_DIR,
+        )
+        log(f"Starting clock in the background...")
+        daemon.start()
+        return
+
+    # Foreground mode
+    run_clock(args, lang, lang_data, time_offset)
 
 
 if __name__ == "__main__":
