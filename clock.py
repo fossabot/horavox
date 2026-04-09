@@ -362,18 +362,31 @@ def play_blank():
         )
 
 
-def speak(voice, text):
-    log(f"Speaking: {text}")
+def prepare_speech(voice, text):
+    """Synthesize WAV and play blank MP3 to warm up Bluetooth audio.
+
+    Returns when the system is ready to play the speech immediately.
+    """
+    log(f"Preparing: {text}")
     with wave.open(TEMP_WAV, "wb") as wav_file:
         voice.synthesize_wav(text, wav_file)
-
     play_blank()
+
+
+def play_speech():
+    """Play the previously prepared speech WAV."""
+    log("Playing speech")
     subprocess.run(
         ["aplay", TEMP_WAV], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
     )
-
     if os.path.exists(TEMP_WAV):
         os.remove(TEMP_WAV)
+
+
+def speak(voice, text):
+    """Synthesize and play speech (no timing control — used by --now)."""
+    prepare_speech(voice, text)
+    play_speech()
 
 
 # ==================== DAEMON ====================
@@ -471,6 +484,12 @@ def run_clock(args, lang, lang_data, time_offset):
     if not args.exit:
         log("  (Ctrl+C to stop)")
 
+    # Warm-up offset: how many seconds before the hour to start
+    # synthesizing + playing blank MP3 so speech starts on the dot.
+    # Measured: synthesis ~0.05s + blank MP3 ~2.2s = ~2.3s total.
+    # Use 3s to leave margin for system jitter.
+    ANNOUNCE_OFFSET = 3
+
     while True:
         now = get_now()
 
@@ -493,8 +512,40 @@ def run_clock(args, lang, lang_data, time_offset):
             log(f"  Time: {now.strftime('%H:%M:%S')} - not on the hour.")
             break
 
-        seconds_to_next_hour = ((60 - now.minute - 1) * 60) + (60 - now.second)
-        time.sleep(seconds_to_next_hour + 1)
+        # Sleep until ANNOUNCE_OFFSET seconds before the next hour
+        frac_sec = now.second + now.microsecond / 1_000_000
+        seconds_to_next_hour = ((60 - now.minute - 1) * 60) + (60 - frac_sec)
+        sleep_time = max(0, seconds_to_next_hour - ANNOUNCE_OFFSET)
+        time.sleep(sleep_time)
+
+        # Determine the upcoming hour
+        next_hour = (now.hour + 1) % 24
+
+        if not is_in_range(next_hour, args.start, args.end):
+            log(f"  {next_hour}:00 outside range ({args.start}-{args.end}), skipping.")
+            if args.exit:
+                break
+            time.sleep(ANNOUNCE_OFFSET + 5)
+            continue
+
+        # Prepare speech (synthesize + blank MP3) while still before the hour
+        text = get_spoken_time(lang_data, next_hour, 0)
+        prepare_speech(voice, text)
+
+        # Wait for the exact hour boundary
+        now = get_now()
+        if now.minute != 0:
+            frac = now.second + now.microsecond / 1_000_000
+            remaining = (60 - frac) + (59 - now.minute) * 60
+            if remaining > 0:
+                time.sleep(remaining)
+
+        # Play the speech right at the hour
+        play_speech()
+
+        if args.exit:
+            break
+        time.sleep(65)
 
 
 def main():
