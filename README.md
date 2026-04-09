@@ -157,6 +157,6 @@ data/
 
 ## License
 
-Copyright (C) Jakub T. Jankiewicz <https://jakub.jankiewicz.org>
+Copyright (C) [Jakub T. Jankiewicz](https://jakub.jankiewicz.org)
 
 Released under MIT license
