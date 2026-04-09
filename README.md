@@ -15,18 +15,21 @@ A multi-language speaking clock that announces the time using [Piper](https://gi
 
 ## Requirements
 
-- Python 3
-- [piper-tts](https://github.com/rhasspy/piper) (`pip install piper-tts`)
-- [daemonize](https://pypi.org/project/daemonize/) (`pip install daemonize`) -- for `--background` mode
-- `aplay` (ALSA, for WAV playback)
-- `mpg123` (for blank MP3 playback)
+- **Python 3** and **pip** -- install with your system package manager if not already available:
+  - Debian/Ubuntu: `sudo apt install python3 python3-pip`
+  - Fedora: `sudo dnf install python3 python3-pip`
+  - Arch: `sudo pacman -S python python-pip`
+- `aplay` (ALSA utils, for WAV playback) -- `sudo apt install alsa-utils`
+- `mpg123` (for blank MP3 playback) -- `sudo apt install mpg123`
+
+Python dependencies ([piper-tts](https://github.com/rhasspy/piper), [daemonize](https://pypi.org/project/daemonize/)) are listed in `requirements.txt` and installed automatically in the step below.
 
 ## Installation
 
 ```bash
 git clone https://github.com/jcubic/clock.git
 cd clock
-pip install piper-tts daemonize
+pip install -r requirements.txt
 ```
 
 ## Usage

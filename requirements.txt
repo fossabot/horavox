@@ -1,0 +1,2 @@
+piper-tts>=1.4.0
+daemonize>=2.5.0
