@@ -1,0 +1,475 @@
+#!/usr/bin/env python
+
+import argparse
+import datetime
+import glob
+import json
+import locale
+import os
+import subprocess
+import sys
+import time
+import urllib.request
+import wave
+
+from piper import PiperVoice
+
+# ================== PATHS ==================
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(SCRIPT_DIR, "data")
+LANG_DIR = os.path.join(DATA_DIR, "lang")
+VOICES_DIR = os.path.join(DATA_DIR, "voices")
+CACHE_DIR = os.path.join(SCRIPT_DIR, ".cache")
+BLANK_MP3 = os.path.join(DATA_DIR, "blank.mp3")
+VOICES_JSON_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json"
+VOICES_BASE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main"
+TEMP_WAV = "/tmp/speaking_clock.wav"
+# ============================================
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description="Speaking clock — announces the time using text-to-speech"
+    )
+
+    # Language & voice
+    parser.add_argument(
+        "--lang",
+        type=str,
+        default=None,
+        metavar="LANG",
+        help="Language code, e.g. pl, en (default: from system locale)",
+    )
+    parser.add_argument(
+        "--voice",
+        type=str,
+        default=None,
+        metavar="NAME",
+        help="Voice name, e.g. en_US-lessac-medium (auto-downloads if missing)",
+    )
+    parser.add_argument(
+        "--list-voices",
+        action="store_true",
+        help="List available Piper voices for the current language and exit",
+    )
+
+    # Time range
+    parser.add_argument(
+        "--start",
+        type=int,
+        default=0,
+        metavar="HOUR",
+        help="Start hour for speaking range (0-23, default: 0)",
+    )
+    parser.add_argument(
+        "--end",
+        type=int,
+        default=23,
+        metavar="HOUR",
+        help="End hour for speaking range (0-23, default: 23)",
+    )
+
+    # Debug
+    parser.add_argument(
+        "--time",
+        type=str,
+        default=None,
+        metavar="HH:MM",
+        help="Set simulated start time for debugging (e.g., 16:00)",
+    )
+    parser.add_argument(
+        "--exit", action="store_true", help="Run once and exit (for debugging)"
+    )
+    parser.add_argument(
+        "--now",
+        action="store_true",
+        help="Speak the current time (with minutes) and exit",
+    )
+
+    return parser.parse_args()
+
+
+# ==================== LANGUAGE ====================
+
+
+def detect_language():
+    """Detect language from system locale, return 2-letter code."""
+    try:
+        loc = locale.getdefaultlocale()[0]  # e.g. "pl_PL", "en_US"
+        if loc:
+            return loc.split("_")[0]
+    except Exception:
+        pass
+    return "en"
+
+
+def load_language_data(lang):
+    """Load language JSON data. Falls back to English if not found."""
+    lang_file = os.path.join(LANG_DIR, f"{lang}.json")
+    if not os.path.exists(lang_file):
+        if lang != "en":
+            print(f"Warning: data/lang/{lang}.json not found, falling back to English.")
+            lang_file = os.path.join(LANG_DIR, "en.json")
+            lang = "en"
+        else:
+            print(f"Error: data/lang/en.json not found.")
+            sys.exit(1)
+
+    with open(lang_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    # Validate
+    if len(data.get("hours", [])) != 24:
+        print(f"Error: data/lang/{lang}.json 'hours' must have 24 entries.")
+        sys.exit(1)
+
+    # hours_alt defaults to hours if not provided
+    if "hours_alt" not in data:
+        data["hours_alt"] = data["hours"]
+    elif len(data["hours_alt"]) != 24:
+        print(f"Error: data/lang/{lang}.json 'hours_alt' must have 24 entries.")
+        sys.exit(1)
+
+    required_patterns = [
+        "full_hour",
+        "quarter_past",
+        "half_past",
+        "quarter_to",
+        "minutes_past",
+        "minutes_to",
+    ]
+    for p in required_patterns:
+        if p not in data.get("patterns", {}):
+            print(f"Error: data/lang/{lang}.json missing pattern '{p}'.")
+            sys.exit(1)
+
+    return data, lang
+
+
+def get_spoken_time(lang_data, hour, minute):
+    """Return spoken time string using language data patterns."""
+    hours = lang_data["hours"]
+    hours_alt = lang_data["hours_alt"]
+    minutes_map = lang_data["minutes"]
+    patterns = lang_data["patterns"]
+
+    next_hour = (hour + 1) % 24
+
+    def fill(pattern, minute_val=None):
+        result = pattern
+        result = result.replace("{hour}", hours[hour])
+        result = result.replace("{hour_alt}", hours_alt[hour])
+        result = result.replace("{next_hour}", hours[next_hour])
+        result = result.replace("{next_hour_alt}", hours_alt[next_hour])
+        if minute_val is not None and (
+            "{minutes}" in result or "{remaining}" in result
+        ):
+            word = minutes_map[str(minute_val)]
+            result = result.replace("{minutes}", word)
+            result = result.replace("{remaining}", word)
+        return result
+
+    if minute == 0:
+        return fill(patterns["full_hour"])
+    elif minute == 15:
+        return fill(patterns["quarter_past"])
+    elif minute == 30:
+        return fill(patterns["half_past"])
+    elif minute == 45:
+        return fill(patterns["quarter_to"])
+    elif minute < 30:
+        return fill(patterns["minutes_past"], minute)
+    else:
+        return fill(patterns["minutes_to"], 60 - minute)
+
+
+# ==================== VOICE MANAGEMENT ====================
+
+
+def ensure_cache_dir():
+    os.makedirs(CACHE_DIR, exist_ok=True)
+
+
+def get_voices_catalog():
+    """Fetch and cache the Piper voices catalog from Hugging Face."""
+    ensure_cache_dir()
+    cache_file = os.path.join(CACHE_DIR, "voices.json")
+
+    # Use cache if less than 24 hours old
+    if os.path.exists(cache_file):
+        age = time.time() - os.path.getmtime(cache_file)
+        if age < 86400:
+            with open(cache_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+
+    print("Fetching voice catalog from Hugging Face...")
+    try:
+        req = urllib.request.Request(VOICES_JSON_URL)
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        with open(cache_file, "w", encoding="utf-8") as f:
+            json.dump(data, f)
+        return data
+    except Exception as e:
+        if os.path.exists(cache_file):
+            print(f"Warning: could not refresh catalog ({e}), using cached version.")
+            with open(cache_file, "r", encoding="utf-8") as f:
+                return json.load(f)
+        print(f"Error: could not fetch voice catalog: {e}")
+        sys.exit(1)
+
+
+def list_voices_for_language(lang):
+    """List available Piper voices for a language family."""
+    catalog = get_voices_catalog()
+    matches = []
+    for key, info in catalog.items():
+        family = info.get("language", {}).get("family", "")
+        if family == lang:
+            size_bytes = sum(
+                f.get("size_bytes", 0)
+                for f in info.get("files", {}).values()
+                if f.get("size_bytes")
+            )
+            size_mb = size_bytes / (1024 * 1024)
+            installed = is_voice_installed(key)
+            matches.append(
+                {
+                    "key": key,
+                    "name": info.get("name", ""),
+                    "quality": info.get("quality", ""),
+                    "region": info.get("language", {}).get("country_english", ""),
+                    "speakers": info.get("num_speakers", 1),
+                    "size_mb": size_mb,
+                    "installed": installed,
+                }
+            )
+
+    matches.sort(key=lambda v: v["key"])
+    return matches
+
+
+def is_voice_installed(voice_key):
+    """Check if a voice's .onnx file exists in the voices directory."""
+    onnx_path = os.path.join(VOICES_DIR, f"{voice_key}.onnx")
+    return os.path.exists(onnx_path)
+
+
+def download_voice(voice_key):
+    """Download a voice from Hugging Face to the voices directory."""
+    catalog = get_voices_catalog()
+    if voice_key not in catalog:
+        print(f"Error: voice '{voice_key}' not found in catalog.")
+        print("Use --list-voices to see available voices.")
+        sys.exit(1)
+
+    info = catalog[voice_key]
+    os.makedirs(VOICES_DIR, exist_ok=True)
+
+    for file_path, file_info in info.get("files", {}).items():
+        filename = os.path.basename(file_path)
+        dest = os.path.join(VOICES_DIR, filename)
+
+        if os.path.exists(dest):
+            continue
+
+        url = f"{VOICES_BASE_URL}/{file_path}"
+        size_mb = file_info.get("size_bytes", 0) / (1024 * 1024)
+        print(f"Downloading {filename} ({size_mb:.1f} MB)...")
+
+        try:
+            urllib.request.urlretrieve(url, dest)
+        except Exception as e:
+            print(f"Error downloading {filename}: {e}")
+            if os.path.exists(dest):
+                os.remove(dest)
+            sys.exit(1)
+
+    print(f"Voice '{voice_key}' installed.")
+
+
+def find_voice_for_language(lang):
+    """Find an installed voice matching the language. Returns .onnx path or None."""
+    pattern = os.path.join(VOICES_DIR, f"{lang}_*.onnx")
+    matches = [f for f in glob.glob(pattern) if not f.endswith(".onnx.json")]
+    if matches:
+        # Prefer medium quality
+        for m in matches:
+            if "-medium." in m:
+                return m
+        return matches[0]
+    return None
+
+
+def resolve_voice(args, lang):
+    """Resolve which voice to use. Downloads if needed. Returns .onnx path."""
+    if args.voice:
+        onnx_path = os.path.join(VOICES_DIR, f"{args.voice}.onnx")
+        if not os.path.exists(onnx_path):
+            print(f"Voice '{args.voice}' not found locally, downloading...")
+            download_voice(args.voice)
+        return onnx_path
+
+    # Try to find an installed voice for the language
+    voice_path = find_voice_for_language(lang)
+    if voice_path:
+        return voice_path
+
+    print(f"No voice installed for language '{lang}'.")
+    print(f"Run: clock.py --list-voices --lang {lang}")
+    print(f"Then: clock.py --voice <name> --lang {lang}")
+    sys.exit(1)
+
+
+# ==================== TTS ====================
+
+
+def play_blank():
+    """Play blank MP3 to wake up Bluetooth audio (avoids clipping the start)."""
+    if os.path.exists(BLANK_MP3):
+        subprocess.run(
+            ["mpg123", "-q", BLANK_MP3],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+
+
+def speak(voice, text):
+    print(f"Speaking: {text}")
+    with wave.open(TEMP_WAV, "wb") as wav_file:
+        voice.synthesize_wav(text, wav_file)
+
+    play_blank()
+    subprocess.run(
+        ["aplay", TEMP_WAV], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+    )
+
+    if os.path.exists(TEMP_WAV):
+        os.remove(TEMP_WAV)
+
+
+# ==================== MAIN ====================
+
+
+def is_in_range(hour, start, end):
+    """Check if hour is within range (handles midnight wrap)."""
+    if start <= end:
+        return start <= hour <= end
+    else:
+        return hour >= start or hour <= end
+
+
+def main():
+    args = parse_args()
+
+    # Resolve language
+    lang = args.lang or detect_language()
+
+    # --list-voices mode
+    if args.list_voices:
+        voices = list_voices_for_language(lang)
+        if not voices:
+            print(f"No voices found for language '{lang}'.")
+            return
+
+        lang_name = ""
+        catalog = get_voices_catalog()
+        for v in voices:
+            info = catalog.get(v["key"], {})
+            lang_name = info.get("language", {}).get("name_english", lang)
+            break
+
+        print(f"Available voices for {lang_name} ({lang}):\n")
+        print(f"  {'Voice':<40} {'Quality':<10} {'Size':<10} {'Installed'}")
+        print(f"  {'-' * 40} {'-' * 10} {'-' * 10} {'-' * 10}")
+        for v in voices:
+            mark = "*" if v["installed"] else ""
+            print(
+                f"  {v['key']:<40} {v['quality']:<10} {v['size_mb']:.0f} MB     {mark}"
+            )
+        print(f"\nInstall a voice: clock.py --voice <name>")
+        return
+
+    # Load language data
+    lang_data, lang = load_language_data(lang)
+
+    # Validate hour range
+    if not (0 <= args.start <= 23):
+        print(f"Error: --start must be 0-23, got {args.start}")
+        return
+    if not (0 <= args.end <= 23):
+        print(f"Error: --end must be 0-23, got {args.end}")
+        return
+
+    # Compute time offset for --time option
+    if args.time:
+        try:
+            h, m = map(int, args.time.split(":"))
+            if not (0 <= h <= 23 and 0 <= m <= 59):
+                raise ValueError
+        except ValueError:
+            print(f"Error: --time must be HH:MM (e.g., 16:00), got '{args.time}'")
+            return
+        real_now = datetime.datetime.now()
+        fake_now = real_now.replace(hour=h, minute=m, second=0, microsecond=0)
+        time_offset = fake_now - real_now
+    else:
+        time_offset = datetime.timedelta(0)
+
+    def get_now():
+        return datetime.datetime.now() + time_offset
+
+    # Resolve and load voice
+    voice_path = resolve_voice(args, lang)
+    voice_name = os.path.basename(voice_path).replace(".onnx", "")
+    print(f"Loading voice: {voice_name}")
+    voice = PiperVoice.load(voice_path)
+
+    # --now mode: speak current time and exit
+    if args.now:
+        now = get_now()
+        text = get_spoken_time(lang_data, now.hour, now.minute)
+        speak(voice, text)
+        return
+
+    # Main clock loop
+    print(f"\nSpeaking clock started (lang={lang})")
+    if args.start != 0 or args.end != 23:
+        print(f"  Hour range: {args.start}:00 - {args.end}:00")
+    if args.time:
+        print(f"  Simulated start time: {args.time}")
+    print(f"  Announces on the hour.\n")
+    if not args.exit:
+        print("  (Ctrl+C to stop)")
+
+    while True:
+        now = get_now()
+
+        if now.minute == 0 and now.second < 5:
+            if is_in_range(now.hour, args.start, args.end):
+                text = get_spoken_time(lang_data, now.hour, 0)
+                speak(voice, text)
+            else:
+                print(
+                    f"  {now.hour}:00 outside range"
+                    f" ({args.start}-{args.end}), skipping."
+                )
+
+            if args.exit:
+                break
+            time.sleep(65)
+            continue
+
+        if args.exit:
+            print(f"  Time: {now.strftime('%H:%M:%S')} - not on the hour.")
+            break
+
+        seconds_to_next_hour = ((60 - now.minute - 1) * 60) + (60 - now.second)
+        time.sleep(seconds_to_next_hour + 1)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        pass
