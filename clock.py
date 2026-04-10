@@ -141,7 +141,7 @@ def parse_args():
 def detect_language():
     """Detect language from system locale, return 2-letter code."""
     try:
-        loc = locale.getdefaultlocale()[0]  # e.g. "pl_PL", "en_US"
+        loc = locale.getlocale()[0]  # e.g. "pl_PL", "en_US"
         if loc:
             return loc.split("_")[0]
     except Exception:
