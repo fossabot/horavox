@@ -48,6 +48,15 @@ pip install -r requirements.txt
 ./clock.py
 ```
 
+### Switch between classic and modern time style
+
+```bash
+./clock.py --mode classic   # "quarter past five", "za kwadrans szósta" (default)
+./clock.py --mode modern    # "five fifteen", "siedemnasta piętnaście"
+```
+
+Classic mode uses idiomatic expressions (quarters, halves, past/to) with 12-hour names. Modern mode reads the time digitally (hour + minutes) using 24-hour names in Polish.
+
 ### List available voices for a language
 
 ```bash
@@ -125,6 +134,7 @@ Speaking clock — announces the time using text-to-speech
 
 options:
   --lang LANG    Language code, e.g. pl, en (default: from system locale)
+  --mode MODE    Time style: classic (idiomatic) or modern (digital) (default: classic)
   --voice NAME   Voice name, e.g. en_US-lessac-medium (auto-downloads if missing)
   --list-voices  List available Piper voices for the current language and exit
   --start HH:MM  Start time for speaking range (default: 0:00)
@@ -143,34 +153,58 @@ options:
 
 ## Adding a new language
 
-Create a JSON file in `data/lang/<code>.json` (e.g., `de.json` for German). The schema:
+Create a JSON file in `data/lang/<code>.json` (e.g., `de.json` for German). The file contains two mode sections:
 
 ```json
 {
-  "hours": ["midnight", "one o'clock", "...", "eleven o'clock"],
-  "hours_alt": ["midnight", "one", "...", "eleven"],
-  "minutes": {
-    "1": "one", "2": "two", "...": "...", "29": "twenty nine"
+  "classic": {
+    "hours": ["midnight", "one o'clock", "...", "eleven o'clock"],
+    "hours_alt": ["midnight", "one", "...", "eleven"],
+    "minutes": {
+      "1": "one", "2": "two", "...": "...", "29": "twenty nine"
+    },
+    "patterns": {
+      "full_hour": "{hour}",
+      "quarter_past": "quarter past {hour_alt}",
+      "half_past": "half past {hour_alt}",
+      "quarter_to": "quarter to {next_hour_alt}",
+      "minutes_past": "{minutes} past {hour_alt}",
+      "minutes_to": "{minutes} to {next_hour_alt}"
+    }
   },
-  "patterns": {
-    "full_hour": "{hour}",
-    "quarter_past": "quarter past {hour_alt}",
-    "half_past": "half past {hour_alt}",
-    "quarter_to": "quarter to {next_hour_alt}",
-    "minutes_past": "{minutes} past {hour_alt}",
-    "minutes_to": "{minutes} to {next_hour_alt}"
+  "modern": {
+    "hours": ["midnight", "one o'clock", "..."],
+    "hours_alt": ["twelve", "one", "..."],
+    "minutes": {
+      "1": "oh one", "...": "...", "59": "fifty nine"
+    },
+    "patterns": {
+      "full_hour": "{hour}",
+      "time": "{hour_alt} {minutes}"
+    }
   }
 }
 ```
 
 ### Fields
 
+**Classic mode** (idiomatic -- quarters, halves, past/to):
+
 | Field | Required | Description |
 |---|---|---|
 | `hours` | Yes | 24 entries (index 0 = midnight, 12 = noon, etc.) used in `{hour}` and `{next_hour}` |
 | `hours_alt` | No | 24 entries for alternate forms (e.g., genitive case). Defaults to `hours` if omitted |
 | `minutes` | Yes | Keys `"1"` through `"29"` -- spoken forms for minute counts |
-| `patterns` | Yes | 6 patterns using placeholders below |
+| `patterns` | Yes | 6 patterns: `full_hour`, `quarter_past`, `half_past`, `quarter_to`, `minutes_past`, `minutes_to` |
+
+**Modern mode** (digital -- hour + minutes):
+
+| Field | Required | Description |
+|---|---|---|
+| `hours` | Yes | 24 entries for full-hour announcements (can include "midnight", "noon") |
+| `hours_alt` | No | 24 entries for the hour in `{hour_alt} {minutes}` patterns. Defaults to `hours` |
+| `minutes` | Yes | Keys `"1"` through `"59"` -- spoken forms for all minute values |
+| `patterns` | Yes | 2 patterns: `full_hour` and `time` |
 
 ### Placeholders
 

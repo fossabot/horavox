@@ -85,6 +85,13 @@ def parse_args():
         help="Voice name, e.g. en_US-lessac-medium (auto-downloads if missing)",
     )
     parser.add_argument(
+        "--mode",
+        type=str,
+        default="classic",
+        choices=["classic", "modern"],
+        help="Time style: classic (idiomatic) or modern (digital) (default: classic)",
+    )
+    parser.add_argument(
         "--list-voices",
         action="store_true",
         help="List available Piper voices for the current language and exit",
@@ -181,7 +188,7 @@ def detect_language():
     return "en"
 
 
-def load_language_data(lang):
+def load_language_data(lang, mode="classic"):
     """Load language JSON data. Falls back to English if not found."""
     lang_file = os.path.join(LANG_DIR, f"{lang}.json")
     if not os.path.exists(lang_file):
@@ -196,6 +203,13 @@ def load_language_data(lang):
     with open(lang_file, "r", encoding="utf-8") as f:
         data = json.load(f)
 
+    # Extract mode-specific data if present
+    if "classic" in data:
+        if mode not in data:
+            print(f"Error: mode '{mode}' not found in data/lang/{lang}.json.")
+            sys.exit(1)
+        data = data[mode]
+
     # Validate
     if len(data.get("hours", [])) != 24:
         print(f"Error: data/lang/{lang}.json 'hours' must have 24 entries.")
@@ -208,14 +222,18 @@ def load_language_data(lang):
         print(f"Error: data/lang/{lang}.json 'hours_alt' must have 24 entries.")
         sys.exit(1)
 
-    required_patterns = [
-        "full_hour",
-        "quarter_past",
-        "half_past",
-        "quarter_to",
-        "minutes_past",
-        "minutes_to",
-    ]
+    # Validate required patterns based on mode
+    if "time" in data.get("patterns", {}):
+        required_patterns = ["full_hour", "time"]
+    else:
+        required_patterns = [
+            "full_hour",
+            "quarter_past",
+            "half_past",
+            "quarter_to",
+            "minutes_past",
+            "minutes_to",
+        ]
     for p in required_patterns:
         if p not in data.get("patterns", {}):
             print(f"Error: data/lang/{lang}.json missing pattern '{p}'.")
@@ -249,7 +267,13 @@ def get_spoken_time(lang_data, hour, minute):
 
     if minute == 0:
         return fill(patterns["full_hour"])
-    elif minute == 15:
+
+    # Modern mode: simple hour + minutes
+    if "time" in patterns:
+        return fill(patterns["time"], minute)
+
+    # Classic mode: idiomatic quarters, halves, past/to
+    if minute == 15:
         return fill(patterns["quarter_past"])
     elif minute == 30:
         return fill(patterns["half_past"])
@@ -750,7 +774,7 @@ def main():
         return
 
     # Load language data
-    lang_data, lang = load_language_data(lang)
+    lang_data, lang = load_language_data(lang, args.mode)
 
     # Parse and validate time range
     start_h, start_m = parse_time_range(args.start, "--start")

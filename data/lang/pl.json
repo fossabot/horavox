@@ -1,36 +1,80 @@
 {
-  "hours": [
-    "północ",
-    "pierwsza", "druga", "trzecia", "czwarta", "piąta", "szósta",
-    "siódma", "ósma", "dziewiąta", "dziesiąta", "jedenasta", "dwunasta",
-    "trzynasta", "czternasta", "piętnasta", "szesnasta", "siedemnasta",
-    "osiemnasta", "dziewiętnasta", "dwudziesta", "dwudziesta pierwsza",
-    "dwudziesta druga", "dwudziesta trzecia"
-  ],
-  "hours_alt": [
-    "północy",
-    "pierwszej", "drugiej", "trzeciej", "czwartej", "piątej", "szóstej",
-    "siódmej", "ósmej", "dziewiątej", "dziesiątej", "jedenastej", "dwunastej",
-    "trzynastej", "czternastej", "piętnastej", "szesnastej", "siedemnastej",
-    "osiemnastej", "dziewiętnastej", "dwudziestej", "dwudziestej pierwszej",
-    "dwudziestej drugiej", "dwudziestej trzeciej"
-  ],
-  "minutes": {
-    "1": "jedna", "2": "dwie", "3": "trzy", "4": "cztery", "5": "pięć",
-    "6": "sześć", "7": "siedem", "8": "osiem", "9": "dziewięć", "10": "dziesięć",
-    "11": "jedenaście", "12": "dwanaście", "13": "trzynaście", "14": "czternaście",
-    "15": "piętnaście", "16": "szesnaście", "17": "siedemnaście", "18": "osiemnaście",
-    "19": "dziewiętnaście", "20": "dwadzieścia",
-    "21": "dwadzieścia jedna", "22": "dwadzieścia dwie", "23": "dwadzieścia trzy",
-    "24": "dwadzieścia cztery", "25": "dwadzieścia pięć", "26": "dwadzieścia sześć",
-    "27": "dwadzieścia siedem", "28": "dwadzieścia osiem", "29": "dwadzieścia dziewięć"
+  "classic": {
+    "hours": [
+      "północ",
+      "pierwsza", "druga", "trzecia", "czwarta", "piąta", "szósta",
+      "siódma", "ósma", "dziewiąta", "dziesiąta", "jedenasta", "dwunasta",
+      "pierwsza", "druga", "trzecia", "czwarta", "piąta", "szósta",
+      "siódma", "ósma", "dziewiąta", "dziesiąta", "jedenasta"
+    ],
+    "hours_alt": [
+      "północy",
+      "pierwszej", "drugiej", "trzeciej", "czwartej", "piątej", "szóstej",
+      "siódmej", "ósmej", "dziewiątej", "dziesiątej", "jedenastej", "dwunastej",
+      "pierwszej", "drugiej", "trzeciej", "czwartej", "piątej", "szóstej",
+      "siódmej", "ósmej", "dziewiątej", "dziesiątej", "jedenastej"
+    ],
+    "minutes": {
+      "1": "jedna", "2": "dwie", "3": "trzy", "4": "cztery", "5": "pięć",
+      "6": "sześć", "7": "siedem", "8": "osiem", "9": "dziewięć", "10": "dziesięć",
+      "11": "jedenaście", "12": "dwanaście", "13": "trzynaście", "14": "czternaście",
+      "15": "piętnaście", "16": "szesnaście", "17": "siedemnaście", "18": "osiemnaście",
+      "19": "dziewiętnaście", "20": "dwadzieścia",
+      "21": "dwadzieścia jedna", "22": "dwadzieścia dwie", "23": "dwadzieścia trzy",
+      "24": "dwadzieścia cztery", "25": "dwadzieścia pięć", "26": "dwadzieścia sześć",
+      "27": "dwadzieścia siedem", "28": "dwadzieścia osiem", "29": "dwadzieścia dziewięć"
+    },
+    "patterns": {
+      "full_hour": "{hour}",
+      "quarter_past": "kwadrans po {hour_alt}",
+      "half_past": "wpół do {next_hour_alt}",
+      "quarter_to": "za kwadrans {next_hour}",
+      "minutes_past": "{minutes} po {hour_alt}",
+      "minutes_to": "za {remaining} {next_hour}"
+    }
   },
-  "patterns": {
-    "full_hour": "{hour}",
-    "quarter_past": "kwadrans po {hour_alt}",
-    "half_past": "wpół do {next_hour_alt}",
-    "quarter_to": "za kwadrans {next_hour}",
-    "minutes_past": "{minutes} po {hour_alt}",
-    "minutes_to": "za {remaining} {next_hour}"
+  "modern": {
+    "hours": [
+      "północ",
+      "pierwsza", "druga", "trzecia", "czwarta", "piąta", "szósta",
+      "siódma", "ósma", "dziewiąta", "dziesiąta", "jedenasta", "dwunasta",
+      "trzynasta", "czternasta", "piętnasta", "szesnasta", "siedemnasta",
+      "osiemnasta", "dziewiętnasta", "dwudziesta", "dwudziesta pierwsza",
+      "dwudziesta druga", "dwudziesta trzecia"
+    ],
+    "hours_alt": [
+      "zero",
+      "pierwsza", "druga", "trzecia", "czwarta", "piąta", "szósta",
+      "siódma", "ósma", "dziewiąta", "dziesiąta", "jedenasta", "dwunasta",
+      "trzynasta", "czternasta", "piętnasta", "szesnasta", "siedemnasta",
+      "osiemnasta", "dziewiętnasta", "dwudziesta", "dwudziesta pierwsza",
+      "dwudziesta druga", "dwudziesta trzecia"
+    ],
+    "minutes": {
+      "1": "jeden", "2": "dwa", "3": "trzy", "4": "cztery", "5": "pięć",
+      "6": "sześć", "7": "siedem", "8": "osiem", "9": "dziewięć", "10": "dziesięć",
+      "11": "jedenaście", "12": "dwanaście", "13": "trzynaście", "14": "czternaście",
+      "15": "piętnaście", "16": "szesnaście", "17": "siedemnaście", "18": "osiemnaście",
+      "19": "dziewiętnaście", "20": "dwadzieścia",
+      "21": "dwadzieścia jeden", "22": "dwadzieścia dwa", "23": "dwadzieścia trzy",
+      "24": "dwadzieścia cztery", "25": "dwadzieścia pięć", "26": "dwadzieścia sześć",
+      "27": "dwadzieścia siedem", "28": "dwadzieścia osiem", "29": "dwadzieścia dziewięć",
+      "30": "trzydzieści",
+      "31": "trzydzieści jeden", "32": "trzydzieści dwa", "33": "trzydzieści trzy",
+      "34": "trzydzieści cztery", "35": "trzydzieści pięć", "36": "trzydzieści sześć",
+      "37": "trzydzieści siedem", "38": "trzydzieści osiem", "39": "trzydzieści dziewięć",
+      "40": "czterdzieści",
+      "41": "czterdzieści jeden", "42": "czterdzieści dwa", "43": "czterdzieści trzy",
+      "44": "czterdzieści cztery", "45": "czterdzieści pięć", "46": "czterdzieści sześć",
+      "47": "czterdzieści siedem", "48": "czterdzieści osiem", "49": "czterdzieści dziewięć",
+      "50": "pięćdziesiąt",
+      "51": "pięćdziesiąt jeden", "52": "pięćdziesiąt dwa", "53": "pięćdziesiąt trzy",
+      "54": "pięćdziesiąt cztery", "55": "pięćdziesiąt pięć", "56": "pięćdziesiąt sześć",
+      "57": "pięćdziesiąt siedem", "58": "pięćdziesiąt osiem", "59": "pięćdziesiąt dziewięć"
+    },
+    "patterns": {
+      "full_hour": "{hour}",
+      "time": "{hour_alt} {minutes}"
+    }
   }
 }
