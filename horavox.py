@@ -28,9 +28,9 @@ BLANK_MP3 = os.path.join(DATA_DIR, "blank.mp3")
 BEEP_MP3 = os.path.join(DATA_DIR, "beep.mp3")
 VOICES_JSON_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json"
 VOICES_BASE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main"
-TEMP_WAV = "/tmp/speaking_clock.wav"
-PID_FILE = os.path.join(CACHE_DIR, "clock.pid")
-CLOCK_LOG = os.path.expanduser("~/.clock.log")
+TEMP_WAV = "/tmp/horavox.wav"
+PID_FILE = os.path.join(CACHE_DIR, "horavox.pid")
+LOG_FILE = os.path.expanduser("~/.horavox.log")
 # ============================================
 
 VERBOSE = False
@@ -45,28 +45,28 @@ def log(msg):
 
 
 def log_to_file(message):
-    """Append a timestamped message to ~/.clock.log."""
+    """Append a timestamped message to ~/.horavox.log."""
     try:
         timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        with open(CLOCK_LOG, "a", encoding="utf-8") as f:
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
             f.write(f"[{timestamp}] {message}\n")
     except OSError:
         pass
 
 
 def log_spoken(text):
-    """Append a spoken-words entry to ~/.clock.log."""
+    """Append a spoken-words entry to ~/.horavox.log."""
     log_to_file(text)
 
 
 def log_error():
-    """Append the current exception traceback to ~/.clock.log."""
+    """Append the current exception traceback to ~/.horavox.log."""
     log_to_file(traceback.format_exc().rstrip())
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Speaking clock — announces the time using text-to-speech"
+        description="HoraVox — announces the time using text-to-speech"
     )
 
     # Language & voice
@@ -429,8 +429,8 @@ def resolve_voice(args, lang):
         return voice_path
 
     print(f"No voice installed for language '{lang}'.")
-    print(f"Run: clock.py --list-voices --lang {lang}")
-    print(f"Then: clock.py --voice <name> --lang {lang}")
+    print(f"Run: vox --list-voices --lang {lang}")
+    print(f"Then: vox --voice <name> --lang {lang}")
     sys.exit(1)
 
 
@@ -527,7 +527,7 @@ def speak(voice, text, beep_count=0):
 def stop_daemon():
     """Stop a running background daemon via PID file."""
     if not os.path.exists(PID_FILE):
-        log("No PID file found. Is the clock running in the background?")
+        log("No PID file found. Is HoraVox running in the background?")
         return False
     try:
         with open(PID_FILE, "r") as f:
@@ -556,7 +556,7 @@ def stop_daemon():
             time.sleep(0.1)
         else:
             os.kill(pid, signal.SIGKILL)
-        log(f"Stopped background clock (PID {pid}).")
+        log(f"Stopped background daemon (PID {pid}).")
         return True
     except OSError as e:
         log(f"Error stopping process {pid}: {e}")
@@ -614,8 +614,8 @@ def is_in_range(hour, minute, start_minutes, end_minutes):
         return t >= start_minutes or t <= end_minutes
 
 
-def run_clock(args, lang, lang_data, time_offset, start_minutes, end_minutes):
-    """Main clock loop. Runs in foreground or as daemon action."""
+def run_vox(args, lang, lang_data, time_offset, start_minutes, end_minutes):
+    """Main loop. Runs in foreground or as daemon action."""
 
     def get_now():
         return datetime.datetime.now() + time_offset
@@ -688,7 +688,7 @@ def run_clock(args, lang, lang_data, time_offset, start_minutes, end_minutes):
         return
 
     # Main polling loop
-    log(f"\nSpeaking clock started (lang={lang})")
+    log(f"\nHoraVox started (lang={lang})")
     if start_minutes != 0 or end_minutes != 23 * 60 + 59:
         log(f"  Time range: {range_str}")
     if freq != 60:
@@ -781,7 +781,7 @@ def main():
             print(
                 f"  {v['key']:<40} {v['quality']:<10} {v['size_mb']:.0f} MB     {mark}"
             )
-        print(f"\nInstall a voice: clock.py --voice <name>")
+        print(f"\nInstall a voice: vox --voice <name>")
         return
 
     # Load language data
@@ -823,7 +823,7 @@ def main():
     if args.background:
         existing_pid = is_daemon_running()
         if existing_pid:
-            log(f"Clock is already running in the background (PID {existing_pid}).")
+            log(f"HoraVox is already running in the background (PID {existing_pid}).")
             log("Use --stop to stop it first.")
             return
 
@@ -837,7 +837,7 @@ def main():
 
         def daemon_action():
             try:
-                run_clock(
+                run_vox(
                     args, lang, lang_data, time_offset, start_minutes, end_minutes
                 )
             except Exception:
@@ -845,17 +845,17 @@ def main():
                 raise
 
         daemon = Daemonize(
-            app="speaking-clock",
+            app="horavox",
             pid=PID_FILE,
             action=daemon_action,
             chdir=SCRIPT_DIR,
         )
-        log(f"Starting clock in the background...")
+        log(f"Starting HoraVox in the background...")
         daemon.start()
         return
 
     # Foreground mode
-    run_clock(args, lang, lang_data, time_offset, start_minutes, end_minutes)
+    run_vox(args, lang, lang_data, time_offset, start_minutes, end_minutes)
 
 
 if __name__ == "__main__":

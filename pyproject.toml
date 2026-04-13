@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "horavox"
+version = "1.0.0"
+description = "HoraVox - a multi-language speaking clock using local AI voice models"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    {name = "Jakub T. Jankiewicz", email = "me@jcubic.pl"},
+]
+keywords = ["tts", "text-to-speech", "clock", "piper", "speaking-clock", "accessibility"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Topic :: Multimedia :: Sound/Audio :: Speech",
+]
+dependencies = [
+    "piper-tts",
+    "daemonize",
+]
+
+[project.urls]
+Homepage = "https://github.com/jcubic/horavox"
+Repository = "https://github.com/jcubic/horavox"
+Issues = "https://github.com/jcubic/horavox/issues"
+
+[project.scripts]
+vox = "horavox:main"
+
+[tool.setuptools]
+py-modules = ["horavox"]
+
+[tool.setuptools.package-data]
+"*" = ["data/**/*"]
