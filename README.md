@@ -1,11 +1,12 @@
 # Speaking Clock
 
-A multi-language speaking clock that announces the time using [Piper](https://github.com/rhasspy/piper) text-to-speech. It speaks the current hour on the hour using natural language idioms (e.g., "quarter past two", "wpół do czwartej") and supports any language through JSON data files.
+A multi-language speaking clock that announces the time using [Piper](https://github.com/rhasspy/piper) text-to-speech. It runs entirely offline using local AI voice models -- no API key or internet connection required (except for the initial voice download). It speaks the current hour on the hour using natural language idioms (e.g., "quarter past two", "wpół do czwartej") and supports any language through JSON data files.
 
 ## Features
 
 - **Natural time idioms** -- not just "it is 14:30" but "half past two" (English) or "wpół do trzeciej" (Polish)
 - **Multi-language** -- add a new language by creating a JSON file in `data/lang/`
+- **Fully offline** -- uses local AI voice models, no API key or cloud service needed
 - **Voice management** -- browse, download, and auto-detect Piper voices from Hugging Face
 - **Bluetooth audio fix** -- plays a silent MP3 before speech to prevent clipping on Bluetooth speakers
 - **Flexible scheduling** -- restrict announcements to a time range (e.g., 7:00--22:00)
