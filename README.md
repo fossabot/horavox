@@ -283,6 +283,16 @@ Alternatively, install in editable mode to get the `vox` command that reflects y
 pip install -e .
 ```
 
+### Publishing to PyPI
+
+Update the `VERSION` variable in the `Makefile`, then run:
+
+```bash
+make publish
+```
+
+This updates the version in `pyproject.toml`, `cli.py`, and `README.md`, builds the package, and uploads it to PyPI.
+
 ## License
 
 Copyright (C) 2026 [Jakub T. Jankiewicz](https://jakub.jankiewicz.org)
