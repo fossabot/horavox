@@ -251,12 +251,23 @@ def get_spoken_time(lang_data, hour, minute):
 
     next_hour = (hour + 1) % 24
 
+    # When next_hour wraps to midnight, some languages use a different name
+    # for "the upcoming hour 0" vs "the current hour 0" (e.g., Polish uses
+    # "dwunasta" when approaching midnight but "północ" when AT midnight).
+    next_hour_name = hours[next_hour]
+    next_hour_alt_name = hours_alt[next_hour]
+    if next_hour == 0:
+        next_hour_name = lang_data.get("next_hour_midnight", next_hour_name)
+        next_hour_alt_name = lang_data.get(
+            "next_hour_midnight_alt", next_hour_alt_name
+        )
+
     def fill(pattern, minute_val=None):
         result = pattern
         result = result.replace("{hour}", hours[hour])
         result = result.replace("{hour_alt}", hours_alt[hour])
-        result = result.replace("{next_hour}", hours[next_hour])
-        result = result.replace("{next_hour_alt}", hours_alt[next_hour])
+        result = result.replace("{next_hour}", next_hour_name)
+        result = result.replace("{next_hour_alt}", next_hour_alt_name)
         if minute_val is not None and (
             "{minutes}" in result or "{remaining}" in result
         ):
