@@ -1,4 +1,6 @@
 .ruff_cache
-data/voices/*
-.cache/*
 __pycache__
+*.egg-info
+dist/
+build/
+

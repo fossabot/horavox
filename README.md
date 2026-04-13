@@ -243,17 +243,21 @@ Create a JSON file in `data/lang/<code>.json` (e.g., `de.json` for German). The 
 ## Project structure
 
 ```
-horavox.py            Main script (installed as `vox` via pip)
-data/
-  lang/
-    en.json           English time data
-    pl.json           Polish time data
-  voices/             Piper voice files (.onnx + .onnx.json)
-  blank.mp3           Silent MP3 for Bluetooth audio wake-up
-  beep.mp3            Beep sound for hour/half-hour signals
-.cache/
-  voices.json         Cached voice catalog from Hugging Face (24h TTL)
-  horavox.pid         PID file for background daemon
+src/horavox/
+  __init__.py         Package init
+  cli.py              Main script (installed as `vox` via pip)
+  data/
+    lang/
+      en.json         English time data
+      pl.json         Polish time data
+    blank.mp3         Silent MP3 for Bluetooth audio wake-up
+    beep.mp3          Beep sound for hour/half-hour signals
+pyproject.toml        Package configuration
+
+~/.horavox/           Runtime data (created automatically)
+  voices/             Downloaded Piper voice models (.onnx)
+  cache/              Voice catalog cache + PID file
+  horavox.log         Spoken words + error log
 ```
 
 ## License

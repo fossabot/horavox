@@ -19,18 +19,23 @@ from daemonize import Daemonize
 from piper import PiperVoice
 
 # ================== PATHS ==================
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(SCRIPT_DIR, "data")
+# Package data (ships with the package, read-only)
+PKG_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_DIR = os.path.join(PKG_DIR, "data")
 LANG_DIR = os.path.join(DATA_DIR, "lang")
-VOICES_DIR = os.path.join(DATA_DIR, "voices")
-CACHE_DIR = os.path.join(SCRIPT_DIR, ".cache")
 BLANK_MP3 = os.path.join(DATA_DIR, "blank.mp3")
 BEEP_MP3 = os.path.join(DATA_DIR, "beep.mp3")
+
+# User data (writable, created at runtime)
+USER_DIR = os.path.expanduser("~/.horavox")
+VOICES_DIR = os.path.join(USER_DIR, "voices")
+CACHE_DIR = os.path.join(USER_DIR, "cache")
+
 VOICES_JSON_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json"
 VOICES_BASE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main"
 TEMP_WAV = "/tmp/horavox.wav"
 PID_FILE = os.path.join(CACHE_DIR, "horavox.pid")
-LOG_FILE = os.path.expanduser("~/.horavox.log")
+LOG_FILE = os.path.join(USER_DIR, "horavox.log")
 # ============================================
 
 VERBOSE = False
@@ -299,13 +304,15 @@ def get_spoken_time(lang_data, hour, minute):
 # ==================== VOICE MANAGEMENT ====================
 
 
-def ensure_cache_dir():
+def ensure_user_dirs():
+    """Create ~/.horavox/ subdirectories for cache and voices."""
     os.makedirs(CACHE_DIR, exist_ok=True)
+    os.makedirs(VOICES_DIR, exist_ok=True)
 
 
 def get_voices_catalog():
     """Fetch and cache the Piper voices catalog from Hugging Face."""
-    ensure_cache_dir()
+    ensure_user_dirs()
     cache_file = os.path.join(CACHE_DIR, "voices.json")
 
     # Use cache if less than 24 hours old
@@ -737,6 +744,16 @@ def run_vox(args, lang, lang_data, time_offset, start_minutes, end_minutes):
 
 
 def main():
+    try:
+        _main()
+    except KeyboardInterrupt:
+        pass
+    except Exception:
+        log_error()
+        raise
+
+
+def _main():
     global VERBOSE, NOSOUND, VOLUME
     args = parse_args()
     if args.debug:
@@ -833,7 +850,7 @@ def main():
             if not os.path.exists(voice_path):
                 return
 
-        ensure_cache_dir()
+        ensure_user_dirs()
 
         def daemon_action():
             try:
@@ -848,7 +865,7 @@ def main():
             app="horavox",
             pid=PID_FILE,
             action=daemon_action,
-            chdir=SCRIPT_DIR,
+            chdir=PKG_DIR,
         )
         log(f"Starting HoraVox in the background...")
         daemon.start()
@@ -859,10 +876,4 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except KeyboardInterrupt:
-        pass
-    except Exception:
-        log_error()
-        raise
+    main()
