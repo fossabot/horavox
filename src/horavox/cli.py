@@ -18,6 +18,8 @@ import wave
 from daemonize import Daemonize
 from piper import PiperVoice
 
+__version__ = "0.1.0"
+
 # ================== PATHS ==================
 # Package data (ships with the package, read-only)
 PKG_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -71,7 +73,13 @@ def log_error():
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="HoraVox — announces the time using text-to-speech"
+        description="HoraVox — announces the time using text-to-speech",
+        prog="vox",
+    )
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
     )
 
     # Language & voice
