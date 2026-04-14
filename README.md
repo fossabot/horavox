@@ -53,122 +53,96 @@ This installs the `vox` command from the local source, including all dependencie
 
 ## Usage
 
-### Speak the current time and exit
+HoraVox uses git-style subcommands:
+
+```
+vox <command> [options]
+```
+
+| Command | Description |
+|---------|-------------|
+| `vox clock` | Run the speaking clock |
+| `vox now` | Speak the current time once |
+| `vox stop` | Stop running background instances |
+| `vox voice` | Manage Piper voice models |
+
+Run `vox <command> --help` for command-specific options.
+
+### vox clock
+
+Run the speaking clock in foreground or as a background daemon:
 
 ```bash
-vox --now
+vox clock                                          # announce every hour
+vox clock --freq 30                                # every 30 minutes
+vox clock --start 7 --end 22                       # only between 7:00-22:00
+vox clock --mode modern                            # digital style ("siedemnasta piętnaście")
+vox clock --background                             # run as a daemon
+vox clock --lang pl --voice pl_PL-darkman-medium   # specific language and voice
+vox clock --volume 50                              # 50% volume
 ```
 
-### Run as a clock (announces on the hour)
+Time range accepts `H`, `HH`, `H:MM`, or `HH:MM`. Supports midnight wrap (e.g., `--start 22 --end 6`).
+
+Valid `--freq` values must divide 60 evenly: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60.
+
+Classic mode (default) uses idiomatic expressions -- "quarter past five", "wpół do szóstej". Modern mode reads the time digitally -- "five fifteen", "siedemnasta piętnaście".
+
+### vox now
+
+Speak the current time once and exit:
 
 ```bash
-vox
+vox now                        # speak current time
+vox now --time 16:00           # speak a specific time
+vox now --mode modern          # digital style
+vox now --volume 30            # quiet
 ```
 
-### Switch between classic and modern time style
+### vox stop
+
+Stop running background instances:
 
 ```bash
-vox --mode classic   # "quarter past five", "za kwadrans szósta" (default)
-vox --mode modern    # "five fifteen", "siedemnasta piętnaście"
+vox stop                       # interactive selection if multiple instances
+vox stop --pid 12345           # stop a specific instance
+vox stop --list                # print PIDs (for scripting)
+vox stop --list --verbose      # include command lines
 ```
 
-Classic mode uses idiomatic expressions (quarters, halves, past/to) with 12-hour names. Modern mode reads the time digitally (hour + minutes) using 24-hour names in Polish.
+When multiple instances are running, `vox stop` shows an interactive menu with arrow-key selection.
 
-### List available voices for a language
+### vox voice
+
+Interactive voice browser -- navigate with arrow keys, press `i` to install, `u` to uninstall, `q` to quit:
 
 ```bash
-vox --list-voices --lang pl
-vox --list-voices --lang en
+vox voice                      # interactive voice browser
+vox voice --lang en            # for a specific language
+vox voice --list               # non-interactive list (for scripting)
+vox voice --list --lang pl     # non-interactive for a specific language
 ```
 
-### Install and use a specific voice
+Installed voices are marked with `[*]`. Downloads show a progress bar below the list.
+
+### Volume and sound
+
+`--nosound` is equivalent to `--volume 0` -- both skip voice loading and audio playback entirely. Available on `vox clock` and `vox now`.
+
+### Custom commands
+
+Like git, any executable named `vox-<name>` in your `$PATH` can be invoked as `vox <name>`. This lets you extend HoraVox with your own commands or scripts:
 
 ```bash
-vox --voice en_US-lessac-medium
-```
+# Create a custom command
+cat > ~/bin/vox-greet << 'EOF'
+#!/bin/bash
+vox now --lang en --voice en_US-lessac-medium
+EOF
+chmod +x ~/bin/vox-greet
 
-Voices are auto-downloaded from Hugging Face if not already installed.
-
-### Limit speaking hours
-
-```bash
-vox --start 7 --end 22
-vox --start 7:30 --end 22:30
-```
-
-Accepts `H`, `HH`, `H:MM`, or `HH:MM`. Supports midnight wrap (e.g., `--start 22 --end 6`).
-
-### Announce every 30 minutes
-
-```bash
-vox --freq 30
-```
-
-Valid values for `--freq` must divide 60 evenly: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60.
-
-### Debug with simulated time
-
-```bash
-vox --time 16:00 --exit
-```
-
-### Run in the background
-
-```bash
-vox --lang pl --voice pl_PL-darkman-medium --start 8 --end 0 --background
-```
-
-Stop the background daemon:
-
-```bash
-vox --stop
-```
-
-### Set volume
-
-```bash
-vox --volume 50          # 50% volume
-vox --volume 0           # silent, same as --nosound
-```
-
-`--nosound` is equivalent to `--volume 0` -- both skip voice loading and audio playback entirely.
-
-### Enable log output
-
-```bash
-vox --verbose
-```
-
-### All options
-
-```
-usage: vox [-h] [--version] [--lang LANG] [--voice NAME] [--mode {classic,modern}]
-           [--list-voices] [--start HH:MM] [--end HH:MM] [--freq MIN] [--time HH:MM]
-           [--exit] [--now] [--background] [--stop] [--verbose] [--volume PCT]
-           [--nosound] [--debug]
-
-HoraVox — announces the time using text-to-speech
-
-options:
-  -h, --help            show this help message and exit
-  --version             show program's version number and exit
-  --lang LANG           Language code, e.g. pl, en (default: from system locale)
-  --voice NAME          Voice name, e.g. en_US-lessac-medium (auto-downloads if missing)
-  --mode {classic,modern}
-                        Time style: classic (idiomatic) or modern (digital) (default: classic)
-  --list-voices         List available Piper voices for the current language and exit
-  --start HH:MM         Start time for speaking range (default: 0:00)
-  --end HH:MM           End time for speaking range (default: 23:59)
-  --freq MIN            Announcement interval in minutes (default: 60)
-  --time HH:MM          Set simulated start time for debugging (e.g., 16:00)
-  --exit                Run once and exit (for debugging)
-  --now                 Speak the current time (with minutes) and exit
-  --background          Run as a background daemon
-  --stop                Stop the background daemon and exit
-  --verbose             Show log messages (silent by default)
-  --volume PCT          Volume level 0-100 percent (default: 100, 0 = no sound)
-  --nosound             Same as --volume 0 — skip voice loading and audio playback
-  --debug               Alias for --nosound --verbose
+# Use it
+vox greet
 ```
 
 ## Adding a new language
