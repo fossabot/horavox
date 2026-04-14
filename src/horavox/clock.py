@@ -8,8 +8,8 @@ import uuid
 
 from daemonize import Daemonize
 
+from horavox import core
 from horavox.core import (
-    NOSOUND,
     PKG_DIR,
     SESSIONS_DIR,
     beep_count_for_minute,
@@ -127,7 +127,7 @@ def run_clock(args, lang, lang_data, time_offset, start_minutes, end_minutes):
         return datetime.datetime.now() + time_offset
 
     # Load voice (intentionally here — after daemon fork to avoid threading issues)
-    if NOSOUND:
+    if core.NOSOUND:
         voice = None
     else:
         voice_path = resolve_voice(args.voice, lang)
@@ -260,7 +260,7 @@ def _main():
 
     # --background mode
     if args.background:
-        if not NOSOUND:
+        if not core.NOSOUND:
             voice_path = resolve_voice(args.voice, lang)
             if not os.path.exists(voice_path):
                 return

@@ -93,7 +93,7 @@ def detect_language():
     """Detect language from system locale, return 2-letter code."""
     try:
         loc = locale.getlocale()[0]  # e.g. "pl_PL", "en_US"
-        if loc:
+        if loc and len(loc) >= 2:
             return loc.split("_")[0]
     except Exception:
         pass

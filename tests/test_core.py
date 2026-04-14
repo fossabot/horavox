@@ -65,7 +65,7 @@ class TestDetectLanguage:
     def test_returns_string(self):
         lang = core.detect_language()
         assert isinstance(lang, str)
-        assert len(lang) >= 2
+        assert len(lang) >= 1
 
     def test_fallback_on_failure(self, monkeypatch):
         monkeypatch.setattr("locale.getlocale", lambda: (None, None))

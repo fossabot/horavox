@@ -615,8 +615,9 @@ class TestVoiceCommand:
     def test_list_has_installed_marker(self, capsys):
         from horavox import voice
 
-        with mock.patch.object(sys, "argv", ["vox voice", "--list", "--lang", "pl"]):
-            voice.main()
+        with mock.patch.object(core, "is_voice_installed", return_value=True):
+            with mock.patch.object(sys, "argv", ["vox voice", "--list", "--lang", "pl"]):
+                voice.main()
         out = capsys.readouterr().out
         assert "[*]" in out
 

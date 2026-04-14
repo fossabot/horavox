@@ -3,8 +3,8 @@
 import argparse
 import datetime
 
+from horavox import core
 from horavox.core import (
-    NOSOUND,
     beep_count_for_minute,
     configure,
     detect_language,
@@ -100,7 +100,7 @@ def _main():
     lang_data, lang = load_language_data(lang, args.mode)
 
     # Load voice
-    if NOSOUND:
+    if core.NOSOUND:
         voice = None
     else:
         from piper import PiperVoice
