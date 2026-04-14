@@ -5,15 +5,15 @@ import datetime
 
 from horavox.core import (
     NOSOUND,
-    configure,
-    log_error,
-    detect_language,
-    load_language_data,
-    get_spoken_time,
-    resolve_voice,
     beep_count_for_minute,
-    speak,
+    configure,
+    detect_language,
+    get_spoken_time,
+    load_language_data,
+    log_error,
     parse_time_arg,
+    resolve_voice,
+    speak,
 )
 
 

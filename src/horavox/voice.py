@@ -2,16 +2,16 @@
 
 import argparse
 import sys
-import tty
 import termios
+import tty
 
 from horavox.core import (
     detect_language,
-    list_voices_for_language,
-    get_voices_catalog,
     download_voice,
-    uninstall_voice,
+    get_voices_catalog,
+    list_voices_for_language,
     log_error,
+    uninstall_voice,
 )
 
 GREEN = "\033[32m"
@@ -67,9 +67,7 @@ def cmd_list(lang):
     print(f"  {'-' * 40} {'-' * 10} {'-' * 10} {'-' * 10}")
     for v in voices:
         mark = "[*]" if v["installed"] else ""
-        print(
-            f"  {v['key']:<40} {v['quality']:<10} {v['size_mb']:.0f} MB     {mark}"
-        )
+        print(f"  {v['key']:<40} {v['quality']:<10} {v['size_mb']:.0f} MB     {mark}")
 
 
 def getch():
@@ -107,7 +105,11 @@ def render_list(voices, cursor, lang_name, lang, status=""):
         line = f"  {arrow} {v['key']:<40} {v['quality']:<8} {v['size_mb']:>3.0f} MB{mark}"
         lines.append(line)
     lines.append("")
-    lines.append(f"  {BOLD}↑/↓{RESET} Navigate  {BOLD}i{RESET} Install  {BOLD}u{RESET} Uninstall  {BOLD}q{RESET} Quit")
+    nav = f"{BOLD}↑/↓{RESET} Navigate"
+    inst = f"{BOLD}i{RESET} Install"
+    uninst = f"{BOLD}u{RESET} Uninstall"
+    quit_hint = f"{BOLD}q{RESET} Quit"
+    lines.append(f"  {nav}  {inst}  {uninst}  {quit_hint}")
     if status:
         lines.append(f"  {status}")
     return lines
@@ -137,12 +139,12 @@ def progress_bar(filename, block_num, block_size, total_size):
     bar_width = 30
     filled = bar_width * pct // 100
     bar = "█" * filled + "░" * (bar_width - filled)
-    sys.stdout.write(f"\033[s")  # save cursor
+    sys.stdout.write("\033[s")  # save cursor
     sys.stdout.write(f"\r{CLEAR_LINE}  Downloading {filename}... [{bar}] {pct}%")
     sys.stdout.flush()
     if pct >= 100:
         sys.stdout.write(f"\r{CLEAR_LINE}")
-        sys.stdout.write(f"\033[u")  # restore cursor
+        sys.stdout.write("\033[u")  # restore cursor
         sys.stdout.flush()
 
 
@@ -181,7 +183,8 @@ def cmd_interactive(lang):
                     status = f"'{v['key']}' is already installed."
                 else:
                     # Render status before download
-                    lines = render_list(voices, cursor, lang_name, lang, f"Installing {v['key']}...")
+                    msg = f"Installing {v['key']}..."
+                    lines = render_list(voices, cursor, lang_name, lang, msg)
                     draw(lines, prev_lines)
                     prev_lines = len(lines)
                     download_voice(v["key"], progress_cb=progress_bar)

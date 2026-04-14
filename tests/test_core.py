@@ -9,7 +9,6 @@ import pytest
 
 from horavox import core
 
-
 # ==================== configure ====================
 
 
@@ -79,6 +78,7 @@ class TestDetectLanguage:
     def test_exception_fallback(self, monkeypatch):
         def raise_err():
             raise RuntimeError("broken")
+
         monkeypatch.setattr("locale.getlocale", raise_err)
         assert core.detect_language() == "en"
 
@@ -137,8 +137,14 @@ class TestLoadLanguageData:
                 "hours": ["a"] * 24,
                 "hours_alt": ["b"] * 10,
                 "minutes": {},
-                "patterns": {"full_hour": "", "quarter_past": "", "half_past": "",
-                             "quarter_to": "", "minutes_past": "", "minutes_to": ""},
+                "patterns": {
+                    "full_hour": "",
+                    "quarter_past": "",
+                    "half_past": "",
+                    "quarter_to": "",
+                    "minutes_past": "",
+                    "minutes_to": "",
+                },
             }
         }
         lang_file = tmp_path / "bad2.json"
@@ -503,6 +509,7 @@ class TestSessionManagement:
     def teardown_method(self):
         core.SESSIONS_DIR = self._orig_sessions
         import shutil
+
         shutil.rmtree(self.tmpdir, ignore_errors=True)
 
     def test_get_running_sessions_empty(self):
@@ -548,6 +555,7 @@ class TestSessionManagement:
 
     def test_kill_session(self):
         import subprocess
+
         proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
 
         session_file = os.path.join(self.tmpdir, "kill-test.json")
@@ -561,6 +569,7 @@ class TestSessionManagement:
 
     def test_kill_session_removes_pid_file(self):
         import subprocess
+
         proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
 
         session_json = os.path.join(self.tmpdir, "test-sess.json")
@@ -666,8 +675,9 @@ class TestEnsureUserDirs:
 
 class TestScaleWavVolume:
     def _make_wav(self, path, samples_list):
-        import wave as wav_mod
         import array as arr_mod
+        import wave as wav_mod
+
         samples = arr_mod.array("h", samples_list)
         with wav_mod.open(path, "wb") as w:
             w.setnchannels(1)
@@ -676,8 +686,9 @@ class TestScaleWavVolume:
             w.writeframes(samples.tobytes())
 
     def _read_wav(self, path):
-        import wave as wav_mod
         import array as arr_mod
+        import wave as wav_mod
+
         with wav_mod.open(path, "rb") as r:
             frames = r.readframes(r.getnframes())
         return arr_mod.array("h", frames)

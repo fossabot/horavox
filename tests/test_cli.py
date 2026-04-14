@@ -3,8 +3,6 @@
 import subprocess
 import sys
 
-import pytest
-
 
 def run_vox(*args, input_text=None):
     """Run a vox command and return (returncode, stdout, stderr)."""
@@ -81,17 +79,13 @@ class TestVoxClock:
 
     def test_debug_exit_noon(self):
         """At 12:00, should say noon equivalent."""
-        rc, out, _ = run_subcommand(
-            "clock", "--debug", "--exit", "--time", "12:00", "--lang", "en"
-        )
+        rc, out, _ = run_subcommand("clock", "--debug", "--exit", "--time", "12:00", "--lang", "en")
         assert rc == 0
         assert "noon" in out.lower()
 
     def test_debug_exit_not_at_slot(self):
         """At a non-slot time, should report not at slot."""
-        rc, out, _ = run_subcommand(
-            "clock", "--debug", "--exit", "--time", "12:01"
-        )
+        rc, out, _ = run_subcommand("clock", "--debug", "--exit", "--time", "12:01")
         assert rc == 0
         assert "not at announcement slot" in out
 
@@ -113,9 +107,7 @@ class TestVoxClock:
 
     def test_freq_30_at_half_hour(self):
         """With --freq 30, half-hour slots should fire."""
-        rc, out, _ = run_subcommand(
-            "clock", "--debug", "--exit", "--time", "12:30", "--freq", "30"
-        )
+        rc, out, _ = run_subcommand("clock", "--debug", "--exit", "--time", "12:30", "--freq", "30")
         assert rc == 0
         assert "Preparing:" in out
 
@@ -166,9 +158,7 @@ class TestVoxClock:
 
     def test_nosound_flag(self):
         """--nosound should work like --debug minus --verbose."""
-        rc, out, _ = run_subcommand(
-            "clock", "--nosound", "--verbose", "--exit", "--time", "12:00"
-        )
+        rc, out, _ = run_subcommand("clock", "--nosound", "--verbose", "--exit", "--time", "12:00")
         assert rc == 0
         assert "Preparing:" in out
 
@@ -191,9 +181,7 @@ class TestVoxNow:
 
     def test_specific_time(self):
         """--time should override the current time."""
-        rc, out, _ = run_subcommand(
-            "now", "--debug", "--time", "12:00", "--lang", "en"
-        )
+        rc, out, _ = run_subcommand("now", "--debug", "--time", "12:00", "--lang", "en")
         assert rc == 0
         assert "noon" in out.lower()
 
@@ -205,9 +193,7 @@ class TestVoxNow:
         assert "nine thirty" in out.lower()
 
     def test_classic_mode_pl(self):
-        rc, out, _ = run_subcommand(
-            "now", "--debug", "--time", "9:30", "--lang", "pl"
-        )
+        rc, out, _ = run_subcommand("now", "--debug", "--time", "9:30", "--lang", "pl")
         assert rc == 0
         assert "dziesiątej" in out  # "wpół do dziesiątej"
 
@@ -260,6 +246,7 @@ class TestVoxStop:
             timeout=10,
         )
         import time
+
         time.sleep(1)
 
         # List should show it
@@ -310,7 +297,7 @@ class TestVoxVoice:
         assert rc == 0
         # We know pl_PL-darkman-medium is installed
         lines = out.split("\n")
-        darkman_lines = [l for l in lines if "darkman" in l]
+        darkman_lines = [line for line in lines if "darkman" in line]
         if darkman_lines:
             assert "[*]" in darkman_lines[0]
 

@@ -3,34 +3,33 @@
 import argparse
 import datetime
 import os
-import sys
 import time
 import uuid
 
 from daemonize import Daemonize
 
 from horavox.core import (
+    NOSOUND,
     PKG_DIR,
     SESSIONS_DIR,
-    NOSOUND,
+    beep_count_for_minute,
     configure,
+    create_session,
+    detect_language,
+    ensure_user_dirs,
+    get_spoken_time,
+    is_in_range,
+    load_language_data,
     log,
     log_error,
-    detect_language,
-    load_language_data,
-    get_spoken_time,
-    resolve_voice,
-    ensure_user_dirs,
-    create_session,
-    parse_time_range,
     parse_time_arg,
-    time_to_minutes,
-    is_in_range,
-    prepare_speech,
-    play_speech,
+    parse_time_range,
     play_beep,
-    beep_count_for_minute,
+    play_speech,
+    prepare_speech,
+    resolve_voice,
     speak,
+    time_to_minutes,
 )
 
 
@@ -89,9 +88,7 @@ def parse_args():
         metavar="HH:MM",
         help="Set simulated start time for debugging (e.g., 16:00)",
     )
-    parser.add_argument(
-        "--exit", action="store_true", help="Run once and exit (for debugging)"
-    )
+    parser.add_argument("--exit", action="store_true", help="Run once and exit (for debugging)")
     parser.add_argument(
         "--background",
         action="store_true",
@@ -141,7 +138,9 @@ def run_clock(args, lang, lang_data, time_offset, start_minutes, end_minutes):
         voice = PiperVoice.load(voice_path)
 
     freq = args.freq
-    range_str = f"{start_minutes // 60}:{start_minutes % 60:02d}-{end_minutes // 60}:{end_minutes % 60:02d}"
+    sh, sm = start_minutes // 60, start_minutes % 60
+    eh, em = end_minutes // 60, end_minutes % 60
+    range_str = f"{sh}:{sm:02d}-{eh}:{em:02d}"
 
     ANNOUNCE_OFFSET = 3
 
@@ -156,9 +155,7 @@ def run_clock(args, lang, lang_data, time_offset, start_minutes, end_minutes):
             slot = current_min
         target_hour = (slot // 60) % 24
         target_minute = slot % 60
-        target = now.replace(
-            hour=target_hour, minute=target_minute, second=0, microsecond=0
-        )
+        target = now.replace(hour=target_hour, minute=target_minute, second=0, microsecond=0)
         if target < now - datetime.timedelta(seconds=5):
             target += datetime.timedelta(days=1)
         return target, target_hour, target_minute
@@ -172,10 +169,7 @@ def run_clock(args, lang, lang_data, time_offset, start_minutes, end_minutes):
                 text = get_spoken_time(lang_data, now.hour, now.minute)
                 speak(voice, text, beep_count=beep_count_for_minute(now.minute))
             else:
-                log(
-                    f"  {now.hour}:{now.minute:02d} outside range"
-                    f" ({range_str}), skipping."
-                )
+                log(f"  {now.hour}:{now.minute:02d} outside range ({range_str}), skipping.")
         else:
             log(f"  Time: {now.strftime('%H:%M:%S')} - not at announcement slot.")
         return
@@ -213,10 +207,7 @@ def run_clock(args, lang, lang_data, time_offset, start_minutes, end_minutes):
                     play_beep()
                 play_speech()
             else:
-                log(
-                    f"  {target_hour}:{target_minute:02d} outside range"
-                    f" ({range_str}), skipping."
-                )
+                log(f"  {target_hour}:{target_minute:02d} outside range ({range_str}), skipping.")
             continue
 
         time.sleep(TICK)
@@ -282,9 +273,7 @@ def _main():
         def daemon_action():
             create_session(os.getpid(), session_id)
             try:
-                run_clock(
-                    args, lang, lang_data, time_offset, start_minutes, end_minutes
-                )
+                run_clock(args, lang, lang_data, time_offset, start_minutes, end_minutes)
             except Exception:
                 log_error()
                 raise

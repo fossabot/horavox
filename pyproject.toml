@@ -39,6 +39,15 @@ vox-now = "horavox.now:main"
 vox-stop = "horavox.stop:main"
 vox-voice = "horavox.voice:main"
 
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["E501"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 

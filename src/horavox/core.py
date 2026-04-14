@@ -14,7 +14,6 @@ import traceback
 import urllib.request
 import wave
 
-
 __version__ = "0.1.0"
 
 # ================== PATHS ==================
@@ -110,7 +109,7 @@ def load_language_data(lang, mode="classic"):
             lang_file = os.path.join(LANG_DIR, "en.json")
             lang = "en"
         else:
-            print(f"Error: data/lang/en.json not found.")
+            print("Error: data/lang/en.json not found.")
             sys.exit(1)
 
     with open(lang_file, "r", encoding="utf-8") as f:
@@ -168,9 +167,7 @@ def get_spoken_time(lang_data, hour, minute):
     next_hour_alt_name = hours_alt[next_hour]
     if next_hour == 0:
         next_hour_name = lang_data.get("next_hour_midnight", next_hour_name)
-        next_hour_alt_name = lang_data.get(
-            "next_hour_midnight_alt", next_hour_alt_name
-        )
+        next_hour_alt_name = lang_data.get("next_hour_midnight_alt", next_hour_alt_name)
 
     def fill(pattern, minute_val=None):
         result = pattern
@@ -178,9 +175,7 @@ def get_spoken_time(lang_data, hour, minute):
         result = result.replace("{hour_alt}", hours_alt[hour])
         result = result.replace("{next_hour}", next_hour_name)
         result = result.replace("{next_hour_alt}", next_hour_alt_name)
-        if minute_val is not None and (
-            "{minutes}" in result or "{remaining}" in result
-        ):
+        if minute_val is not None and ("{minutes}" in result or "{remaining}" in result):
             word = minutes_map[str(minute_val)]
             result = result.replace("{minutes}", word)
             result = result.replace("{remaining}", word)
@@ -435,9 +430,7 @@ def play_speech():
     log("Playing speech")
     if NOSOUND:
         return
-    subprocess.run(
-        ["aplay", TEMP_WAV], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-    )
+    subprocess.run(["aplay", TEMP_WAV], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     if os.path.exists(TEMP_WAV):
         os.remove(TEMP_WAV)
 
@@ -527,9 +520,7 @@ def parse_time_range(value, name):
             raise ValueError
         return h, m
     except ValueError:
-        print(
-            f"Error: {name} must be H, HH, H:MM, or HH:MM (e.g., 7, 07:30), got '{value}'"
-        )
+        print(f"Error: {name} must be H, HH, H:MM, or HH:MM (e.g., 7, 07:30), got '{value}'")
         sys.exit(1)
 
 

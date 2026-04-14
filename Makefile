@@ -1,6 +1,6 @@
 VERSION = 0.1.0
 
-.PHONY: publish publish-test version build clean test coverage
+.PHONY: publish publish-test version build clean test coverage lint
 
 publish: version build
 	twine upload dist/*
@@ -19,6 +19,10 @@ test:
 
 coverage:
 	python -m pytest tests/ -v --cov=src/horavox --cov-report=term --cov-report=lcov:coverage.lcov
+
+lint:
+	ruff check src/ tests/
+	ruff format --check src/ tests/
 
 version:
 	sed -i 's/^version = "[0-9]\+\.[0-9]\+\.[0-9]\+"/version = "$(VERSION)"/' pyproject.toml
