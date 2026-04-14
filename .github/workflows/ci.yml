@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [master, devel]
+  pull_request:
+    branches: [master, devel]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements-dev.txt
+      - run: make lint
+
+  test:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - run: sudo apt-get update && sudo apt-get install -y alsa-utils mpg123
+      - run: pip install -e . -r requirements-dev.txt
+      - run: make coverage
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.lcov
+
+  coveralls:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v8
+        with:
+          name: coverage-report
+      - uses: coverallsapp/github-action@v2
+        with:
+          file: coverage.lcov
