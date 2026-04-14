@@ -35,6 +35,7 @@ jobs:
 
   coveralls:
     needs: test
+    if: github.event_name == 'push' && github.repository == 'jcubic/horavox'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
