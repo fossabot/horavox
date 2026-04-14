@@ -4,7 +4,9 @@
 </h1>
 
 [![pip](https://img.shields.io/badge/pip-0.1.0-blue.svg)](https://pypi.org/project/horavox/)
+[![CI](https://github.com/jcubic/horavox/actions/workflows/ci.yml/badge.svg)](https://github.com/jcubic/horavox/actions/workflows/ci.yml)
 [![horavox GitHub repo](https://img.shields.io/badge/github-horavox-orange?logo=github)](https://github.com/jcubic/horavox)
+[![Coverage Status](https://coveralls.io/repos/github/jcubic/horavox/badge.svg?branch=devel)](https://coveralls.io/github/jcubic/horavox?branch=devel)
 [![LICENSE MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/jcubic/horavox/blob/master/LICENSE)
 
 A multi-language speaking clock that announces the time using [Piper](https://github.com/rhasspy/piper) text-to-speech. It runs entirely offline using local AI voice models -- no API key or internet connection required (except for the initial voice download). It speaks the current hour on the hour using natural language idioms (e.g., "quarter past two", "wpół do czwartej") and supports any language through JSON data files.
@@ -53,122 +55,96 @@ This installs the `vox` command from the local source, including all dependencie
 
 ## Usage
 
-### Speak the current time and exit
+HoraVox uses git-style subcommands:
 
 ```bash
-vox --now
+vox <command> [options]
 ```
 
-### Run as a clock (announces on the hour)
+| Command | Description |
+|---------|-------------|
+| `vox clock` | Run the speaking clock |
+| `vox now` | Speak the current time once |
+| `vox stop` | Stop running background instances |
+| `vox voice` | Manage Piper voice models |
+
+Run `vox <command> --help` for command-specific options.
+
+### vox clock
+
+Run the speaking clock in foreground or as a background daemon:
 
 ```bash
-vox
+vox clock                                          # announce every hour
+vox clock --freq 30                                # every 30 minutes
+vox clock --start 7 --end 22                       # only between 7:00-22:00
+vox clock --mode modern                            # digital style ("siedemnasta piętnaście")
+vox clock --background                             # run as a daemon
+vox clock --lang pl --voice pl_PL-darkman-medium   # specific language and voice
+vox clock --volume 50                              # 50% volume
 ```
 
-### Switch between classic and modern time style
+Time range accepts `H`, `HH`, `H:MM`, or `HH:MM`. Supports midnight wrap (e.g., `--start 22 --end 6`).
+
+Valid `--freq` values must divide 60 evenly: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60.
+
+Classic mode (default) uses idiomatic expressions -- "quarter past five", "wpół do szóstej". Modern mode reads the time digitally -- "five fifteen", "siedemnasta piętnaście".
+
+### vox now
+
+Speak the current time once and exit:
 
 ```bash
-vox --mode classic   # "quarter past five", "za kwadrans szósta" (default)
-vox --mode modern    # "five fifteen", "siedemnasta piętnaście"
+vox now                        # speak current time
+vox now --time 16:00           # speak a specific time
+vox now --mode modern          # digital style
+vox now --volume 30            # quiet
 ```
 
-Classic mode uses idiomatic expressions (quarters, halves, past/to) with 12-hour names. Modern mode reads the time digitally (hour + minutes) using 24-hour names in Polish.
+### vox stop
 
-### List available voices for a language
+Stop running background instances:
 
 ```bash
-vox --list-voices --lang pl
-vox --list-voices --lang en
+vox stop                       # interactive selection if multiple instances
+vox stop --pid 12345           # stop a specific instance
+vox stop --list                # print PIDs (for scripting)
+vox stop --list --verbose      # include command lines
 ```
 
-### Install and use a specific voice
+When multiple instances are running, `vox stop` shows an interactive menu with arrow-key selection.
+
+### vox voice
+
+Interactive voice browser -- navigate with arrow keys, press `i` to install, `u` to uninstall, `q` to quit:
 
 ```bash
-vox --voice en_US-lessac-medium
+vox voice                      # interactive voice browser
+vox voice --lang en            # for a specific language
+vox voice --list               # non-interactive list (for scripting)
+vox voice --list --lang pl     # non-interactive for a specific language
 ```
 
-Voices are auto-downloaded from Hugging Face if not already installed.
+Installed voices are marked with `[*]`. Downloads show a progress bar below the list.
 
-### Limit speaking hours
+### Volume and sound
+
+`--nosound` is equivalent to `--volume 0` -- both skip voice loading and audio playback entirely. Available on `vox clock` and `vox now`.
+
+### Custom commands
+
+Like git, any executable named `vox-<name>` in your `$PATH` can be invoked as `vox <name>`. This lets you extend HoraVox with your own commands or scripts:
 
 ```bash
-vox --start 7 --end 22
-vox --start 7:30 --end 22:30
-```
+# Create a custom command
+cat > ~/bin/vox-greet << 'EOF'
+#!/bin/bash
+vox now --lang en --voice en_US-lessac-medium
+EOF
+chmod +x ~/bin/vox-greet
 
-Accepts `H`, `HH`, `H:MM`, or `HH:MM`. Supports midnight wrap (e.g., `--start 22 --end 6`).
-
-### Announce every 30 minutes
-
-```bash
-vox --freq 30
-```
-
-Valid values for `--freq` must divide 60 evenly: 1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60.
-
-### Debug with simulated time
-
-```bash
-vox --time 16:00 --exit
-```
-
-### Run in the background
-
-```bash
-vox --lang pl --voice pl_PL-darkman-medium --start 8 --end 0 --background
-```
-
-Stop the background daemon:
-
-```bash
-vox --stop
-```
-
-### Set volume
-
-```bash
-vox --volume 50          # 50% volume
-vox --volume 0           # silent, same as --nosound
-```
-
-`--nosound` is equivalent to `--volume 0` -- both skip voice loading and audio playback entirely.
-
-### Enable log output
-
-```bash
-vox --verbose
-```
-
-### All options
-
-```
-usage: vox [-h] [--version] [--lang LANG] [--voice NAME] [--mode {classic,modern}]
-           [--list-voices] [--start HH:MM] [--end HH:MM] [--freq MIN] [--time HH:MM]
-           [--exit] [--now] [--background] [--stop] [--verbose] [--volume PCT]
-           [--nosound] [--debug]
-
-HoraVox — announces the time using text-to-speech
-
-options:
-  -h, --help            show this help message and exit
-  --version             show program's version number and exit
-  --lang LANG           Language code, e.g. pl, en (default: from system locale)
-  --voice NAME          Voice name, e.g. en_US-lessac-medium (auto-downloads if missing)
-  --mode {classic,modern}
-                        Time style: classic (idiomatic) or modern (digital) (default: classic)
-  --list-voices         List available Piper voices for the current language and exit
-  --start HH:MM         Start time for speaking range (default: 0:00)
-  --end HH:MM           End time for speaking range (default: 23:59)
-  --freq MIN            Announcement interval in minutes (default: 60)
-  --time HH:MM          Set simulated start time for debugging (e.g., 16:00)
-  --exit                Run once and exit (for debugging)
-  --now                 Speak the current time (with minutes) and exit
-  --background          Run as a background daemon
-  --stop                Stop the background daemon and exit
-  --verbose             Show log messages (silent by default)
-  --volume PCT          Volume level 0-100 percent (default: 100, 0 = no sound)
-  --nosound             Same as --volume 0 — skip voice loading and audio playback
-  --debug               Alias for --nosound --verbose
+# Use it
+vox greet
 ```
 
 ## Adding a new language
@@ -270,33 +246,7 @@ pyproject.toml        Package configuration
 
 ## Development
 
-```bash
-git clone https://github.com/jcubic/horavox.git
-cd horavox
-pip install -r requirements.txt
-```
-
-This installs only the dependencies without installing the package itself. You can then run the script directly:
-
-```bash
-python src/horavox/cli.py --now
-```
-
-Alternatively, install in editable mode to get the `vox` command that reflects your source changes:
-
-```bash
-pip install -e .
-```
-
-### Publishing to PyPI
-
-Update the `VERSION` variable in the `Makefile`, then run:
-
-```bash
-make publish
-```
-
-This updates the version in `pyproject.toml`, `cli.py`, and `README.md`, builds the package, and uploads it to PyPI.
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, testing, and publishing instructions.
 
 ## Name
 
