@@ -141,30 +141,33 @@ vox --verbose
 ### All options
 
 ```
-usage: vox [-h] [--lang LANG] [--mode {classic,modern}] [--voice NAME]
-           [--list-voices] [--start HH:MM] [--end HH:MM] [--freq MIN]
-           [--time HH:MM] [--exit] [--now] [--background] [--stop]
-           [--verbose] [--volume PCT] [--nosound] [--debug]
+usage: vox [-h] [--version] [--lang LANG] [--voice NAME] [--mode {classic,modern}]
+           [--list-voices] [--start HH:MM] [--end HH:MM] [--freq MIN] [--time HH:MM]
+           [--exit] [--now] [--background] [--stop] [--verbose] [--volume PCT]
+           [--nosound] [--debug]
 
 HoraVox — announces the time using text-to-speech
 
 options:
-  --lang LANG    Language code, e.g. pl, en (default: from system locale)
-  --mode MODE    Time style: classic (idiomatic) or modern (digital) (default: classic)
-  --voice NAME   Voice name, e.g. en_US-lessac-medium (auto-downloads if missing)
-  --list-voices  List available Piper voices for the current language and exit
-  --start HH:MM  Start time for speaking range (default: 0:00)
-  --end HH:MM    End time for speaking range (default: 23:59)
-  --freq MIN     Announcement interval in minutes (default: 60)
-  --time HH:MM   Set simulated start time for debugging (e.g., 16:00)
-  --exit         Run once and exit (for debugging)
-  --now          Speak the current time (with minutes) and exit
-  --background   Run as a background daemon
-  --stop         Stop the background daemon and exit
-  --verbose      Show log messages (silent by default)
-  --volume PCT   Volume level 0-100 percent (default: 100, 0 = no sound)
-  --nosound      Same as --volume 0 — skip voice loading and audio playback
-  --debug        Alias for --nosound --verbose
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+  --lang LANG           Language code, e.g. pl, en (default: from system locale)
+  --voice NAME          Voice name, e.g. en_US-lessac-medium (auto-downloads if missing)
+  --mode {classic,modern}
+                        Time style: classic (idiomatic) or modern (digital) (default: classic)
+  --list-voices         List available Piper voices for the current language and exit
+  --start HH:MM         Start time for speaking range (default: 0:00)
+  --end HH:MM           End time for speaking range (default: 23:59)
+  --freq MIN            Announcement interval in minutes (default: 60)
+  --time HH:MM          Set simulated start time for debugging (e.g., 16:00)
+  --exit                Run once and exit (for debugging)
+  --now                 Speak the current time (with minutes) and exit
+  --background          Run as a background daemon
+  --stop                Stop the background daemon and exit
+  --verbose             Show log messages (silent by default)
+  --volume PCT          Volume level 0-100 percent (default: 100, 0 = no sound)
+  --nosound             Same as --volume 0 — skip voice loading and audio playback
+  --debug               Alias for --nosound --verbose
 ```
 
 ## Adding a new language
