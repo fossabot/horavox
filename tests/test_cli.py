@@ -1,7 +1,17 @@
-"""E2E tests for HoraVox CLI commands."""
+"""E2E tests for HoraVox CLI commands.
 
+All subprocess commands run with HOME set to a temp directory so they
+don't read/write the developer's real ~/.horavox (voices, sessions, cache).
+"""
+
+import os
 import subprocess
 import sys
+import tempfile
+
+# Shared temp home for test isolation
+_TEST_HOME = tempfile.mkdtemp(prefix="horavox-test-")
+_TEST_ENV = {**os.environ, "HOME": _TEST_HOME}
 
 
 def run_vox(*args, input_text=None):
@@ -12,6 +22,7 @@ def run_vox(*args, input_text=None):
         text=True,
         input=input_text,
         timeout=30,
+        env=_TEST_ENV,
     )
     return result.returncode, result.stdout, result.stderr
 
@@ -23,6 +34,7 @@ def run_subcommand(module, *args):
         capture_output=True,
         text=True,
         timeout=30,
+        env=_TEST_ENV,
     )
     return result.returncode, result.stdout, result.stderr
 
@@ -113,9 +125,9 @@ class TestVoxClock:
 
     def test_invalid_freq(self):
         """--freq that doesn't divide 60 should error."""
-        rc, out, _ = run_subcommand("clock", "--debug", "--exit", "--freq", "7")
-        assert rc == 0  # exits normally but prints error
-        assert "must divide 60 evenly" in out
+        rc, out, err = run_subcommand("clock", "--debug", "--exit", "--freq", "7")
+        assert rc != 0
+        assert "must divide 60 evenly" in (out + err)
 
     def test_mode_modern(self):
         """Modern mode should produce digital-style output."""
@@ -244,6 +256,7 @@ class TestVoxStop:
             [sys.executable, "-m", "horavox.clock", "--background", "--nosound"],
             capture_output=True,
             timeout=10,
+            env=_TEST_ENV,
         )
         import time
 

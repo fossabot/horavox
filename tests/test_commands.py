@@ -389,21 +389,19 @@ class TestClockCommand:
                 clock.main()
                 mock_speak.assert_called_once()
 
-    def test_invalid_freq(self, capsys):
+    def test_invalid_freq(self):
         from horavox import clock
 
         with mock.patch.object(sys, "argv", ["vox clock", "--debug", "--exit", "--freq", "7"]):
-            clock.main()
-        out = capsys.readouterr().out
-        assert "must divide 60 evenly" in out
+            with pytest.raises(SystemExit, match="must divide 60 evenly"):
+                clock.main()
 
-    def test_invalid_freq_too_high(self, capsys):
+    def test_invalid_freq_too_high(self):
         from horavox import clock
 
         with mock.patch.object(sys, "argv", ["vox clock", "--debug", "--exit", "--freq", "99"]):
-            clock.main()
-        out = capsys.readouterr().out
-        assert "must be 1-60" in out
+            with pytest.raises(SystemExit, match="must be 1-60"):
+                clock.main()
 
     def test_modern_mode(self):
         from horavox import clock

@@ -6,12 +6,14 @@
 git clone https://github.com/jcubic/horavox.git
 cd horavox
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
 ```
 
-This installs only the dependencies without installing the package itself. You can then run the script directly:
+This installs the runtime dependencies and dev tools (pytest, ruff). You can then run the module entry points directly:
 
 ```bash
-python src/horavox/cli.py --now
+python -m horavox.main now --debug
+python -m horavox.main --help
 ```
 
 Alternatively, install in editable mode to get the `vox` command that reflects your source changes:
@@ -36,9 +38,16 @@ make coverage
 
 This outputs a terminal summary and writes `coverage.lcov`.
 
+To run the linter:
+
+```bash
+make lint
+```
+
 ### Test structure
 
 - `tests/test_core.py` -- unit tests for `horavox.core` (language, time utilities, voice management, sessions, logging, WAV scaling)
+- `tests/test_commands.py` -- unit tests for command modules with mocked core functions
 - `tests/test_cli.py` -- E2E tests for all CLI commands (`vox clock`, `vox now`, `vox stop`, `vox voice`)
 
 ### Writing tests
@@ -66,7 +75,7 @@ make publish-test
 
 ## Project structure
 
-```
+```text
 src/horavox/
   __init__.py         Package init
   core.py             Shared library (paths, logging, language, TTS, voice, sessions)
@@ -81,5 +90,6 @@ src/horavox/
     beep.mp3          Beep sound for hour/half-hour signals
 tests/
   test_core.py        Unit tests
+  test_commands.py    Command unit tests (mocked)
   test_cli.py         E2E tests
 ```

@@ -6,4 +6,4 @@
 * fix handling kill of multiple commands run in background
 
 ## 0.1.0
-* inital release
+* initial release

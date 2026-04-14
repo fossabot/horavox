@@ -57,7 +57,7 @@ This installs the `vox` command from the local source, including all dependencie
 
 HoraVox uses git-style subcommands:
 
-```
+```bash
 vox <command> [options]
 ```
 

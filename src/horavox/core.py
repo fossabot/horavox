@@ -30,9 +30,15 @@ VOICES_DIR = os.path.join(USER_DIR, "voices")
 CACHE_DIR = os.path.join(USER_DIR, "cache")
 SESSIONS_DIR = os.path.join(USER_DIR, "sessions")
 
-VOICES_JSON_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json"
-VOICES_BASE_URL = "https://huggingface.co/rhasspy/piper-voices/resolve/main"
-TEMP_WAV = "/tmp/horavox.wav"
+VOICES_JSON_URL = os.environ.get(
+    "HORAVOX_VOICES_JSON_URL",
+    "https://huggingface.co/rhasspy/piper-voices/resolve/main/voices.json",
+)
+VOICES_BASE_URL = os.environ.get(
+    "HORAVOX_VOICES_BASE_URL",
+    "https://huggingface.co/rhasspy/piper-voices/resolve/main",
+)
+TEMP_WAV = f"/tmp/horavox-{os.getpid()}.wav"
 LOG_FILE = os.path.join(USER_DIR, "horavox.log")
 # ============================================
 
@@ -176,7 +182,8 @@ def get_spoken_time(lang_data, hour, minute):
         result = result.replace("{next_hour}", next_hour_name)
         result = result.replace("{next_hour_alt}", next_hour_alt_name)
         if minute_val is not None and ("{minutes}" in result or "{remaining}" in result):
-            word = minutes_map[str(minute_val)]
+            minute_key = str(minute_val)
+            word = minutes_map.get(minute_key, minute_key)
             result = result.replace("{minutes}", word)
             result = result.replace("{remaining}", word)
         return result
@@ -357,7 +364,8 @@ def resolve_voice(voice_name, lang):
         return voice_path
 
     print(f"No voice installed for language '{lang}'.")
-    print(f"Run: vox voice install --lang {lang}")
+    print(f"Run: vox voice --lang {lang} (then press 'i' to install)")
+    print(f"Or list available voices: vox voice --list --lang {lang}")
     sys.exit(1)
 
 

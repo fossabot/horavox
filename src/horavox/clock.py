@@ -241,14 +241,12 @@ def _main():
     end_minutes = time_to_minutes(end_h, end_m)
 
     if args.freq < 1 or args.freq > 60:
-        print(f"Error: --freq must be 1-60, got {args.freq}")
-        return
+        raise SystemExit(f"Error: --freq must be 1-60, got {args.freq}")
     if 60 % args.freq != 0:
-        print(
+        raise SystemExit(
             f"Error: --freq must divide 60 evenly"
             f" (1, 2, 3, 4, 5, 6, 10, 12, 15, 20, 30, 60), got {args.freq}"
         )
-        return
 
     if args.time:
         h, m = parse_time_arg(args.time)
